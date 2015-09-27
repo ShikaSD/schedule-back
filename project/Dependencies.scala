@@ -1,29 +1,36 @@
 import sbt._
 
-object Versions {
-  lazy val scala = "2.11.6"
-  lazy val app = "0.1"
+object Version {
+  lazy val scala                = "2.11.7"
+  lazy val app                  = "0.1"
 
-  lazy val scaldi = "0.5.6"
-  lazy val retrofit = "1.9.0"
-  lazy val jodaTime = "2.8.2"
+  lazy val subcut               = "2.1"
+  lazy val retrofit             = "1.9.0"
+  lazy val json4s               = "3.3.0.RC6"
+  lazy val jodaTime             = "2.8.2"
 }
 
 object Libraries {
-  lazy val scaldi = "org.scaldi" %% "scaldi" % Versions.scaldi
-  lazy val retrofit = "com.squareup.retrofit" % "retrofit" % Versions.retrofit
-  lazy val jodaTime ="joda-time" % "joda-time" % Versions.jodaTime
+  lazy val subcut               = "com.escalatesoft.subcut"             %%  "subcut"              % Version.subcut
+
+  lazy val retrofit             = "com.squareup.retrofit"               %   "retrofit"            % Version.retrofit
+
+  lazy val json4s               = "org.json4s"                          %%  "json4s-native"       % Version.json4s
+  lazy val json4sExt            = "org.json4s"                          %%  "json4s-ext"          % Version.json4s
+  lazy val jodaTime             = "joda-time"                           %   "joda-time"           % Version.jodaTime
 }
 
 object Dependencies {
   import Libraries._
 
   val common = Seq (
-    scaldi,
+    subcut,
     jodaTime
   )
 
   val rest = Seq (
-    retrofit
+    retrofit,
+    json4s,
+    json4sExt
   )
 }
