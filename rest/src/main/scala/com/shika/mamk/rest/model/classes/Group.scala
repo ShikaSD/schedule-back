@@ -11,17 +11,10 @@ case class Group (
   name:      String           = ""
 ) extends RestModel {
 
-  def get() = {
-    this + Group.getAdapter.get(objectId)
-  }
-
-  def create() = {
-    this + Group.getAdapter.create(this)
-  }
-
-  def update() = {
-    this + Group.getAdapter.update(objectId, this)
-  }
+  def get()    = this + Group.getAdapter.get(objectId)
+  def create() = this + Group.getAdapter.create(this)
+  def update() = this + Group.getAdapter.update(objectId, this)
+  def delete() = this + Group.getAdapter.delete(objectId)
   
   def + (group: Group) = {
     val objectId  = if(group.objectId != "")     group.objectId   else this.objectId
@@ -31,6 +24,8 @@ case class Group (
 
     Group(objectId, createdAt, updatedAt, name)
   }
+
+  def equals (group: Group) = this.name == group.name
 }
 
 object Group extends RestObject {

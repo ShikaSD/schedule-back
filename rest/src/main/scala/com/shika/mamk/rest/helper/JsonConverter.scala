@@ -37,8 +37,6 @@ class JsonConverter[T <: RestModel] (implicit man: Manifest[T]) extends Converte
       Source.fromInputStream(typedInput.in).mkString
         .replaceFirst("\\{\"results\"\\:(.*)}", "$1")
 
-    println(jType)
-
     jType.toString match {
       case "scala.collection.Seq<T>" => JsonHelper.fromJson[Seq[T]](json)
       case _ => JsonHelper.fromJson[T](json)

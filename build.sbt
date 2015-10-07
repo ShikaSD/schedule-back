@@ -3,7 +3,13 @@ import sbt._
 lazy val commonSettings = Seq(
   version := Version.app,
   scalaVersion := Version.scala,
-  libraryDependencies ++= Dependencies.common
+  libraryDependencies ++= Dependencies.common,
+  scalacOptions ++= Seq(
+    "-feature",
+    "-language:postfixOps",
+    "-Xfatal-warnings",
+    "-unchecked"
+  )
 )
 
 lazy val rest = (project in file ("rest"))

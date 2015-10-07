@@ -17,4 +17,7 @@ trait RestDefinition {
 
   @PUT("/{objectId}")
   def update[T](@Path("objectId") objectId: String, @Body obj: T): T
+
+  @DELETE("/{objectId}")
+  def delete[T](@Path("objectId") objectId: String): T
 }

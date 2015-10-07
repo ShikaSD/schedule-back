@@ -13,20 +13,14 @@ case class Course (
   teacher   :String            = "",
   group     :String            = "",
   start     :Option[DateTime]  = None,
-  end       :Option[DateTime]  = None
+  end       :Option[DateTime]  = None,
+  parent    :Boolean           = false
 ) extends RestModel {
 
-  def get() = {
-    this + Course.getAdapter.get(objectId)
-  }
-
-  def create() = {
-    this + Course.getAdapter.create(this)
-  }
-
-  def update() = {
-    this + Course.getAdapter.update(objectId, this)
-  }
+  def get()    = this + Course.getAdapter.get(objectId)
+  def create() = this + Course.getAdapter.create(this)
+  def update() = this + Course.getAdapter.update(objectId, this)
+  def delete() = this + Course.getAdapter.delete(objectId)
 
   def + (course: Course) = {
     val objectId  = if(course.objectId != "")     course.objectId   else this.objectId
@@ -38,8 +32,16 @@ case class Course (
     val group     = if(course.group != "")        course.group      else this.group
     val start     = if(course.start.nonEmpty)     course.start      else this.start
     val end       = if(course.end.nonEmpty)       course.end        else this.end
+    val parent    = if(course.parent)             course.parent     else this.parent
 
-    Course(objectId, createdAt, updatedAt, name, courseId, teacher, group, start, end)
+    Course(objectId, createdAt, updatedAt, name, courseId, teacher, group, start, end, parent)
+  }
+
+  def equals (course: Course) = {
+    (this.name == course.name) &&
+      (this.courseId == course.courseId) &&
+      (this.teacher  == course.teacher ) &&
+      (this.group    == course.group   )
   }
 }
 

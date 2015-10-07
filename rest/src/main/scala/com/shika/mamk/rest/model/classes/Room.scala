@@ -12,17 +12,10 @@ case class Room (
   description: String           = ""
 ) extends RestModel {
 
-  def get() = {
-    this + Room.getAdapter.get(objectId)
-  }
-
-  def create() = {
-    this + Room.getAdapter.create(this)
-  }
-
-  def update() = {
-    this + Room.getAdapter.update(objectId, this)
-  }
+  def get()    = this + Room.getAdapter.get(objectId)
+  def create() = this + Room.getAdapter.create(this)
+  def update() = this + Room.getAdapter.update(objectId, this)
+  def delete() = this + Room.getAdapter.delete(objectId)
 
   def + (room: Room) = {
     val objectId    = if(room.objectId != "")     room.objectId     else this.objectId
@@ -32,6 +25,10 @@ case class Room (
     val description = if(room.description != "")  room.description  else this.description
 
     Room(objectId, createdAt, updatedAt, name, description)
+  }
+
+  def equals (room: Room) = {
+    (this.name == room.name) && (this.description == room.description)
   }
 }
 

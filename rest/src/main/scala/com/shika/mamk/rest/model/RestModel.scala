@@ -7,10 +7,6 @@ import org.joda.time.DateTime
 trait RestModel {
   def objectId: String
   def createdAt: Option[DateTime]
-
-  def get()
-  def create()
-  def update()
 }
 
 trait RestObject {
@@ -31,10 +27,18 @@ trait RestObject {
     _adapter.get
   }
 
-  def query(params: QueryParam = null, order: String = dOrder, limit: Int = dLimit, skip: Int = dSkip) = {
-    if (params == null)
-      getAdapter.query(null, order, limit, skip)
-    else
-      getAdapter.query(JsonHelper.toJson(params.map), order, limit, skip)
-  }
+  def query(params: AnyRef = null, order: String = dOrder, limit: Int = dLimit, skip: Int = dSkip): Seq[T] =
+    params match {
+      case (name: String, param: Seq[Any]) =>
+        val paramsMap = (name, param.map(_.asInstanceOf[QueryParam].getMap))
+        getAdapter.query(JsonHelper.toJson(paramsMap), order, limit, skip)
+
+      case params: QueryParam =>
+        getAdapter.query (JsonHelper.toJson (params.getMap), order, limit, skip)
+
+      case _ => getAdapter.query (null, order, limit, skip)
+    }
+
+
+  def query: Seq[T] = getAdapter.query(null, dOrder, dLimit, dSkip)
 }

@@ -18,14 +18,16 @@ object Libraries {
   lazy val json4s               = "org.json4s"                          %%  "json4s-native"       % Version.json4s
   lazy val json4sExt            = "org.json4s"                          %%  "json4s-ext"          % Version.json4s
   lazy val jodaTime             = "joda-time"                           %   "joda-time"           % Version.jodaTime
+
+  lazy val httpClient           = "org.apache.httpcomponents"           % "httpclient"            % "4.5.1"
 }
 
 object Dependencies {
   import Libraries._
 
   val common = Seq (
-    subcut,
-    jodaTime
+    jodaTime,
+    httpClient
   )
 
   val rest = Seq (

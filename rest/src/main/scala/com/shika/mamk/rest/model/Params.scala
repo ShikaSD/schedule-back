@@ -1,5 +1,8 @@
 package com.shika.mamk.rest.model
 
+import com.shika.mamk.rest.helper.JsonHelper
+import org.joda.time.DateTime
+
 import scala.language.postfixOps
 
 case class Param (
@@ -37,31 +40,32 @@ case class Param (
 
 object Param {
   def apply (
-             $lt:         String  = null,
-             $lte:        String  = null,
-             $gt:         String  = null,
-             $gte:        String  = null,
-             $ne:         String  = null,
-             $in:         String  = null,
-             $nin:        String  = null,
-             $exists:     String  = null,
-             $select:     String  = null,
-             $dontSelect:	String  = null,
-             $all:	      String  = null,
-             $regex:	    String  = null) = {
+    lessThan           :String = null,
+    lessThanOrEqual    :String = null,
+    greaterThan        :String = null,
+    greaterThanOrEqual :String = null,
+    notEqual           :String = null,
+    in                 :String = null,
+    notIn              :String = null,
+    exists             :String = null,
+    select             :String = null,
+    dontSelect	       :String = null,
+    all                :String = null,
+    regex	             :String = null
+  ) = {
     new Param (
-      Option($lt),
-      Option($lte),
-      Option($gt),
-      Option($gte),
-      Option($ne),
-      Option($in),
-      Option($nin),
-      Option($exists).map(_.toBoolean ),
-      Option($select),
-      Option($dontSelect),
-      Option($all),
-      Option($regex)
+      Option(lessThan),
+      Option(lessThanOrEqual),
+      Option(greaterThan),
+      Option(greaterThanOrEqual),
+      Option(notEqual),
+      Option(in),
+      Option(notIn),
+      Option(exists).map(_.toBoolean),
+      Option(select),
+      Option(dontSelect),
+      Option(all),
+      Option(regex)
     )
   }
 }
@@ -84,7 +88,7 @@ class QueryParam {
     this()
     add(name, value)
   }
-  
+
   def add(name: String, value: String): QueryParam = {
     _values += (name -> value)
     this
@@ -103,9 +107,27 @@ class QueryParam {
     this
   }
 
-  def map = _params ++ _values
+  def getMap = _params ++ _values
 }
 
 object QueryParam {
-  def or(params: Seq[QueryParam]) = Map("$or" -> params)
+  def or(params: Seq[QueryParam]) = ("$or", params)
+
+  def apply (name: String, params: Param) = new QueryParam(name, params)
+  def apply (values: Map[String, String]) = new QueryParam(values)
+  def apply (name: String, value: String) = new QueryParam(name, value)
+  def apply ()                            = new QueryParam
+}
+
+case class DateParam(
+  __type: String = "Date",
+  iso: DateTime
+) {
+  def toJson = JsonHelper.toJson(this)
+}
+
+object DateParam {
+  def apply(date: DateTime) = {
+    new DateParam(iso = date)
+  }
 }
