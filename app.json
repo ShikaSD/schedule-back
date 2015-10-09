@@ -1,0 +1,5 @@
+{
+  "name": "MAMK Parser",
+  "description": "",
+  "image": "heroku/scala"
+}

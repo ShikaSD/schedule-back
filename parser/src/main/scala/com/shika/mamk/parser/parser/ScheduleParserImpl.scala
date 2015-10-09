@@ -1,6 +1,6 @@
-package com.shika.mamk.parser
+package com.shika.mamk.parser.parser
 
-
+import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.helper.ParserHelper._
 import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
@@ -13,7 +13,7 @@ import org.joda.time.{DateTime, DateTimeConstants, DateTimeZone}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object Parser extends App {
+class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends ScheduleParser with Injectable {
   lazy val StartDate = DateTime.now.withDayOfWeek(DateTimeConstants.MONDAY)
   lazy val Format = DateTimeFormat.forPattern("yyMMddHH:mm")
 
@@ -27,13 +27,7 @@ object Parser extends App {
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Savonlinna%2Fmuut_tilat%7C%7CSln&guest=%2Fmamk&lang=eng",
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=STK%2FElixiiri%7C%7CSTK&guest=%2Fmamk&lang=eng")
 
-  Future {
-    parseRooms()
-  }
-  parseGroups()
-  parseLessons()
-
-  private def parseGroups() = {
+  override def parseGroups = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
 
     val html = getHtml(GroupUrl)
@@ -56,9 +50,11 @@ object Parser extends App {
         .map(s => Group(name = s))
         .foreach(_.create())
     }
+
+    Group query
   }
 
-  private def parseRooms() = {
+  override def parseRooms() = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
     val html = RoomUrls.fold("")((html, s) => html + getHtml(s))
 
@@ -90,38 +86,48 @@ object Parser extends App {
       parsed.view.filter(s => !rooms.exists(_ equals s))
         .foreach(_.create())
     }
+
+    Room query
   }
 
-  private def parseLessons() = {
-    Group.query foreach {group =>
-      formUrls(group.name, StartDate) foreach { case (weekNum, url) =>
-        val parsed = parseWeek(url, group)
-        keys foreach { key =>
-          RestService initialize key
+  override def parseLessons(group: Group) = {
+    var deleted = 0
+    var created = 0
 
-          try {
-            val lessons = Lesson query QueryParam("group", group.name)
-              .add("start", Param(
-                greaterThanOrEqual = JsonHelper.toJson(StartDate),
-                lessThan = JsonHelper.toJson(StartDate plusWeeks weekNum)
-              ))
+    formUrls(group.name, StartDate) foreach {case (weekNum, url) =>
+      val parsed = parseWeek(url, group)
+      keys foreach {key =>
+        RestService initialize key
 
-            parsed.view.filter(s => !lessons.exists(_ equals s))
-              .map(_.create())
-              .foreach {lesson =>
-                addCourse(lesson)
-                addTeacher(lesson)
-                addRoom(lesson)
-              }
+        try {
+          val lessons = Lesson query QueryParam("group", group.name)
+            .add("start", Param(
+              greaterThanOrEqual = JsonHelper.toJson(StartDate),
+              lessThan = JsonHelper.toJson(StartDate plusWeeks weekNum)
+            ))
 
-            lessons.view.filter(s => !parsed.exists(_ equals s))
-              .foreach(_.delete())
-          } catch {
-            case e: Exception => e.printStackTrace()
-          }
+          parsed.view.filter(s => !lessons.exists(_ equals s))
+            .map(_.create())
+            .foreach {lesson =>
+              addCourse(lesson)
+              addTeacher(lesson)
+              addRoom(lesson)
+              created += 1
+            }
+
+          lessons.view.filter(s => !parsed.exists(_ equals s))
+            .foreach { g =>
+              g.delete()
+              deleted += 1
+            }
+
+        } catch {
+          case e: Exception => e.printStackTrace()
         }
       }
     }
+
+    (created, deleted)
   }
 
   private def addCourse(lesson: Lesson) = {

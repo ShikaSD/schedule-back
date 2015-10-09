@@ -1,4 +1,4 @@
-package com.shika.mamk.parser
+package com.shika.mamk.parser.parser
 
 class StudentParser {
   /*try {
