@@ -31,7 +31,7 @@ object RestService {
       .setEndpoint(s"https://api.parse.com/1/classes/$apiPath")
       .setRequestInterceptor(request)
       .setConverter(converter)
-      .setLogLevel(LogLevel.NONE)
+      .setLogLevel(LogLevel.HEADERS_AND_ARGS)
       .build()
 
     restAdapter.create(classOf[RestDefinition])

@@ -1,15 +1,17 @@
 package com.shika.mamk.web.actors
 
 import akka.actor.Actor
-import com.escalatesoft.subcut.inject.{Injectable, BindingModule}
+import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.parser.ScheduleParser
-
-import scala.concurrent.Future
+import com.shika.mamk.web.util.Configuration
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-class ParserActor(implicit val bindingModule: BindingModule) extends Actor
+import scala.concurrent.Future
+
+class ParserActor extends Actor
   with Injectable {
 
+  implicit val bindingModule: BindingModule = Configuration
   private lazy val schedule = inject[ScheduleParser]
 
   private def parse() = {
