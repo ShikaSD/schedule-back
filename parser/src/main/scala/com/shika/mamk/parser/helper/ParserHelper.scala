@@ -19,7 +19,7 @@ import scala.util.matching.Regex
 
 object ParserHelper {
   val ScheduleUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
-  val SoleOpsUrl  = "https://soleops.mamk.fi/opsnet/disp/en/ops_TotsuHaku/tab/fet/sea"
+  val SoleOpsUrl  = "https://soleops.mamk.fi/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
 
   implicit val codec = Codec("ISO-8859-1")
   codec.onMalformedInput(CodingErrorAction.REPLACE)

@@ -1,13 +1,12 @@
 .env
 logs
 project/project
-project/target
 target
 tmp
 .history
+*.iml
 dist
 /.idea
-/*.iml
 /out
 /.idea_modules
 /.classpath
