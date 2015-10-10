@@ -5,11 +5,9 @@ import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.parser.ScheduleParser
 import com.shika.mamk.web.util.Configuration
 import controllers.Application
-import play.api.libs.concurrent.Akka
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
-import scala.io.Source
 
 class ParserActor extends Actor
   with Injectable {
@@ -20,7 +18,11 @@ class ParserActor extends Actor
   private def parse() = {
     Future( schedule parseRooms )
 
-    schedule.parseGroups foreach schedule.parseLessons
+    schedule.parseGroups foreach { g =>
+      val (added, deleted) = schedule.parseLessons(g)
+      println(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
+    }
+    println(s"End of parsing")
     cancelTick()
   }
 

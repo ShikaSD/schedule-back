@@ -10,9 +10,6 @@ import com.shika.mamk.rest.model.{Param, QueryParam}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeConstants, DateTimeZone}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-
 class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends ScheduleParser with Injectable {
   lazy val StartDate = DateTime.now.withDayOfWeek(DateTimeConstants.MONDAY)
   lazy val Format = DateTimeFormat.forPattern("yyMMddHH:mm")
@@ -54,7 +51,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
     Group query
   }
 
-  override def parseRooms() = {
+  override def parseRooms = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
     val html = RoomUrls.fold("")((html, s) => html + getHtml(s))
 

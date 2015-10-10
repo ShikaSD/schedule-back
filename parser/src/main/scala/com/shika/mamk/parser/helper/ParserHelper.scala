@@ -95,7 +95,7 @@ object ParserHelper {
           val dates = (m group 3).split("-").map(s => Some(soleOpsDateFormat.parseDateTime(s)))
           Course(
             courseId = m group 1,
-            name = m group 2,
+            name = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),
             start = dates(0),
             end = dates(1),
             group = m group 4,

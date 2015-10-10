@@ -1,6 +1,6 @@
 package com.shika.mamk.parser.parser
 
-import com.shika.mamk.rest.model.classes.{Room, Group}
+import com.shika.mamk.rest.model.classes.{Group, Room}
 
 trait ScheduleParser {
   def parseRooms: Seq[Room]

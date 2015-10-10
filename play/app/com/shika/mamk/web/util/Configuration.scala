@@ -1,7 +1,7 @@
 package com.shika.mamk.web.util
 
 import com.escalatesoft.subcut.inject.NewBindingModule
-import com.shika.mamk.parser.parser.{ScheduleParserImpl, ScheduleParser}
+import com.shika.mamk.parser.parser.{ScheduleParser, ScheduleParserImpl}
 
 object Configuration extends NewBindingModule (implicit module => {
   import module._
