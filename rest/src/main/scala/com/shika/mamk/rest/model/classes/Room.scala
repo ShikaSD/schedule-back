@@ -1,13 +1,12 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{RestModel, RestObject}
-import org.joda.time.DateTime
+import com.shika.mamk.rest.model._
 
 case class Room (
   objectId:    String           = "",
-  createdAt:   Option[DateTime] = None,
-  updatedAt:   Option[DateTime] = None,
+  createdAt:   Option[ParseDate] = None,
+  updatedAt:   Option[ParseDate] = None,
   name:        String           = "",
   description: String           = ""
 ) extends RestModel {

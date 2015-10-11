@@ -3,6 +3,7 @@ package com.shika.mamk.parser.helper
 import java.nio.charset.CodingErrorAction
 import java.security.cert.X509Certificate
 
+import com.shika.mamk.rest.model.ParseDate
 import com.shika.mamk.rest.model.classes.{Course, Lesson}
 import org.apache.http.client.entity.UrlEncodedFormEntity
 import org.apache.http.client.methods.HttpPost
@@ -92,7 +93,7 @@ object ParserHelper {
 
       for (m <- coursePattern findFirstMatchIn body)
         yield {
-          val dates = (m group 3).split("-").map(s => Some(soleOpsDateFormat.parseDateTime(s)))
+          val dates = (m group 3).split("-").map(s => Some( ParseDate(soleOpsDateFormat.parseDateTime(s)) ))
           Course(
             courseId = m group 1,
             name = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),

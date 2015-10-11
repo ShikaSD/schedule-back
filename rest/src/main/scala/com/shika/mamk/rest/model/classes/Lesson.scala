@@ -1,20 +1,19 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{RestModel, RestObject}
-import org.joda.time.DateTime
+import com.shika.mamk.rest.model.{ParseDate, RestModel, RestObject}
 
 case class Lesson (
   objectId  :String            = "",
-  createdAt :Option[DateTime]  = None,
-  updatedAt :Option[DateTime]  = None,
+  createdAt :Option[ParseDate]  = None,
+  updatedAt :Option[ParseDate]  = None,
   name      :String            = "",
   courseId  :String            = "",
   teacher   :String            = "",
   group     :String            = "",
   room      :String            = "",
-  start     :Option[DateTime]  = None,
-  end       :Option[DateTime]  = None
+  start     :Option[ParseDate]  = None,
+  end       :Option[ParseDate]  = None
 ) extends RestModel {
 
   def get()    = this + Lesson.getAdapter.get(objectId)
@@ -43,8 +42,8 @@ case class Lesson (
       (teacher   ==      lesson.teacher)   &&
       (group     ==      lesson.group)     &&
       (room      ==      lesson.room)      &&
-      (start.get isEqual lesson.start.get) &&
-      (end.get   isEqual lesson.end.get)
+      (start.get.iso isEqual lesson.start.get.iso) &&
+      (end.get.iso   isEqual lesson.end.get.iso)
   }
 }
 

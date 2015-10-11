@@ -1,19 +1,18 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{RestModel, RestObject}
-import org.joda.time.DateTime
+import com.shika.mamk.rest.model.{ParseDate, RestModel, RestObject}
 
 case class Course (
   objectId  :String            = "",
-  createdAt :Option[DateTime]  = None,
-  updatedAt :Option[DateTime]  = None,
+  createdAt :Option[ParseDate]  = None,
+  updatedAt :Option[ParseDate]  = None,
   name      :String            = "",
   courseId  :String            = "",
   teacher   :String            = "",
   group     :String            = "",
-  start     :Option[DateTime]  = None,
-  end       :Option[DateTime]  = None,
+  start     :Option[ParseDate]  = None,
+  end       :Option[ParseDate]  = None,
   parent    :Boolean           = false
 ) extends RestModel {
 

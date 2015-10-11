@@ -4,9 +4,8 @@ import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.helper.ParserHelper._
 import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
-import com.shika.mamk.rest.helper.JsonHelper
 import com.shika.mamk.rest.model.classes._
-import com.shika.mamk.rest.model.{Param, QueryParam}
+import com.shika.mamk.rest.model.{Param, ParseDate, QueryParam}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeConstants, DateTimeZone}
 
@@ -99,8 +98,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
         try {
           val lessons = Lesson query QueryParam("group", group.name)
             .add("start", Param(
-              greaterThanOrEqual = JsonHelper.toJson(StartDate),
-              lessThan = JsonHelper.toJson(StartDate plusWeeks weekNum)
+              greaterThanOrEqual = ParseDate(StartDate plusWeeks weekNum - 1),
+              lessThan           = ParseDate(StartDate plusWeeks weekNum)
             ))
 
           parsed.view.filter(s => !lessons.exists(_ equals s))
@@ -233,8 +232,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
       Lesson(
         courseId = cid,
         name = name,
-        start = Some(start),
-        end = Some(end),
+        start = Some( ParseDate(start) ),
+        end = Some( ParseDate(end) ),
         group = group.name,
         teacher = teacher,
         room = room

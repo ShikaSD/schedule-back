@@ -2,11 +2,10 @@ package com.shika.mamk.rest.model
 
 import com.shika.mamk.rest.helper.{JsonConverter, JsonHelper}
 import com.shika.mamk.rest.{RestDefinition, RestService}
-import org.joda.time.DateTime
 
 trait RestModel {
   def objectId: String
-  def createdAt: Option[DateTime]
+  def createdAt: Option[ParseDate]
 }
 
 trait RestObject {
