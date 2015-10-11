@@ -6,18 +6,18 @@ import scala.language.postfixOps
 
 object Param {
   def apply (
-    lessThan           :AnyRef = null,
-    lessThanOrEqual    :AnyRef = null,
-    greaterThan        :AnyRef = null,
-    greaterThanOrEqual :AnyRef = null,
-    notEqual           :AnyRef = null,
-    in                 :AnyRef = null,
-    notIn              :AnyRef = null,
-    exists             :AnyRef = null,
-    select             :AnyRef = null,
-    dontSelect	       :AnyRef = null,
-    all                :AnyRef = null,
-    regex	             :AnyRef = null
+    lessThan           :AnyRef = None,
+    lessThanOrEqual    :AnyRef = None,
+    greaterThan        :AnyRef = None,
+    greaterThanOrEqual :AnyRef = None,
+    notEqual           :AnyRef = None,
+    in                 :AnyRef = None,
+    notIn              :AnyRef = None,
+    exists             :AnyRef = None,
+    select             :AnyRef = None,
+    dontSelect	       :AnyRef = None,
+    all                :AnyRef = None,
+    regex	             :AnyRef = None
   ) = {
     collection.mutable.Map (
       "$lt"         -> Option(lessThan),
