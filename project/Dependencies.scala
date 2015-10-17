@@ -2,7 +2,7 @@ import sbt._
 
 object Version {
   lazy val scala                = "2.11.7"
-  lazy val app                  = "0.1"
+  lazy val app                  = "0.2"
 
   lazy val subcut               = "2.1"
 

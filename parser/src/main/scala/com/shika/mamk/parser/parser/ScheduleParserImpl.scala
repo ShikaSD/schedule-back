@@ -9,19 +9,12 @@ import com.shika.mamk.rest.model.{Param, ParseDate, QueryParam}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeConstants, DateTimeZone}
 
-class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends ScheduleParser with Injectable {
-  lazy val StartDate = DateTime.now.withDayOfWeek(DateTimeConstants.MONDAY)
-  lazy val Format = DateTimeFormat.forPattern("yyMMddHH:mm")
+class ScheduleParserImpl(implicit val bindingModule: BindingModule, implicit val startDate: DateTime)
+  extends ScheduleParser with Injectable {
+
+  private val dateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")
 
   DateTimeZone.setDefault(DateTimeZone.forID("Europe/Helsinki"))
-
-  lazy val GroupUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=lk&guest=%2Fmamk&lang=eng"
-  lazy val RoomUrls = Array(
-    "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Kasarmi%2Fluokat%7C%7CKas&guest=%2Fmamk&lang=eng",
-    "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Kasarmi%2Fmuut_tilat%7C%7CKas&guest=%2Fmamk&lang=eng",
-    "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Savonlinna%2Fluokat%7C%7CSln&guest=%2Fmamk&lang=eng",
-    "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Savonlinna%2Fmuut_tilat%7C%7CSln&guest=%2Fmamk&lang=eng",
-    "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=STK%2FElixiiri%7C%7CSTK&guest=%2Fmamk&lang=eng")
 
   override def parseGroups = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
@@ -90,7 +83,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
     var deleted = 0
     var created = 0
 
-    formUrls(group.name, StartDate) foreach {case (weekNum, url) =>
+    formUrls(group.name, startDate) foreach {case (weekNum, url) =>
       val parsed = parseWeek(url, group)
       keys foreach {key =>
         RestService initialize key
@@ -98,8 +91,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
         try {
           val lessons = Lesson query QueryParam("group", group.name)
             .add("start", Param(
-              greaterThanOrEqual = ParseDate(StartDate plusWeeks weekNum - 1),
-              lessThan           = ParseDate(StartDate plusWeeks weekNum)
+              greaterThanOrEqual = ParseDate(startDate plusWeeks weekNum - 1),
+              lessThan           = ParseDate(startDate plusWeeks weekNum)
             ))
 
           parsed.view.filter(s => !lessons.exists(_ equals s))
@@ -204,8 +197,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule) extends Sche
       //Date
       val time = splitParts.head.split(" - ")
       val date = part.search(datePattern).get
-      val start = Format.parseDateTime(date + time(0))
-      val end = Format.parseDateTime(date + time(1))
+      val start = dateFormat.parseDateTime(date + time(0))
+      val end = dateFormat.parseDateTime(date + time(1))
 
       //There can be nothing in array, so skip it
       //if (splitParts.length < 2) return

@@ -4,10 +4,10 @@ import retrofit.http._
 
 trait RestDefinition {
   @GET("/")
-  def query[T](@Query("where") where: String = null,
-            @Query("order") order: String,
-            @Query("limit") limit: Int,
-            @Query("skip") skip: Int): Seq[T]
+  def query[T](@Query("where") where: String,
+               @Query("order") order: String,
+               @Query("limit") limit: Int,
+               @Query("skip") skip: Int): Seq[T]
 
   @GET("/{objectId}")
   def get[T](@Path("objectId") objectId: String): T

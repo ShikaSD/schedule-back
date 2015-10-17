@@ -1,43 +1,34 @@
 package com.shika.mamk.parser.helper
 
-import java.nio.charset.CodingErrorAction
 import java.security.cert.X509Certificate
 
+import com.shika.mamk.parser.model.StudentEvent
+import com.shika.mamk.rest.helper.JsonHelper
 import com.shika.mamk.rest.model.ParseDate
 import com.shika.mamk.rest.model.classes.{Course, Lesson}
 import org.apache.http.client.entity.UrlEncodedFormEntity
-import org.apache.http.client.methods.HttpPost
-import org.apache.http.impl.client.HttpClients
+import org.apache.http.client.methods.{HttpRequestBase, HttpPost}
+import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.apache.http.message.BasicNameValuePair
 import org.apache.http.ssl.{SSLContextBuilder, TrustStrategy}
 import org.apache.http.util.EntityUtils
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
+import com.shika.mamk.parser.parser._
 
 import scala.collection.JavaConverters._
 import scala.io.{Codec, Source}
 import scala.util.matching.Regex
 
 object ParserHelper {
-  val ScheduleUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
-  val SoleOpsUrl  = "https://soleops.mamk.fi/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
-
-  implicit val codec = Codec("ISO-8859-1")
-  codec.onMalformedInput(CodingErrorAction.REPLACE)
-  codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
-
   private val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
-
-  val sslContext = new SSLContextBuilder().loadTrustMaterial(new TrustStrategy {
-    def isTrusted(arg0: Array[X509Certificate], arg1: String): Boolean = true
-  }).build
 
   def getHtml(url: String) = {
     Source.fromURL(url).mkString
   }
 
   def formUrls(name: String, start: DateTime): Array[(Int, String)] = {
-    (0 to 20) map { num =>
+    (0 to weeksToParse) map { num =>
       (num + 1, start.plusWeeks(num))
     } map { tuple =>
       val dString = tuple._2.toString(DateTimeFormat.forPattern("yyMMdd"))
@@ -84,12 +75,7 @@ object ParserHelper {
       request.setHeader("Content-Type", "application/x-www-form-urlencoded")
       request.setHeader("Accept", "text/html")
 
-      val response = httpClient.execute(request)
-      val body = Source.fromInputStream(
-        response.getEntity.getContent
-      ).mkString
-
-      EntityUtils consume response.getEntity
+      val body = httpClient.getResponse(request)
 
       for (m <- coursePattern findFirstMatchIn body)
         yield {
@@ -105,6 +91,21 @@ object ParserHelper {
         }
     } finally {
       httpClient.close()
+    }
+  }
+
+  def getEvent(response: String) = {
+    val eventPattern = """\{"ListData":(\{"ContentType":.*?\}),"ListSchema""".r
+
+    response.search(eventPattern) map JsonHelper.fromJson[StudentEvent]
+  }
+
+  implicit class HttpClientOpts(val client: CloseableHttpClient) extends AnyVal {
+    def getResponse(request: HttpRequestBase) = {
+      val entity = client.execute(request).getEntity
+      val result = Source.fromInputStream(entity.getContent).mkString
+      EntityUtils.consume(entity)
+      result
     }
   }
 

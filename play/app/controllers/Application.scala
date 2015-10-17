@@ -2,18 +2,19 @@ package controllers
 
 import akka.actor.{ActorSystem, Cancellable, Props}
 import com.shika.mamk.web.actors.{ParserActor, TimerActor}
-import play.api._
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc._
 
 import scala.concurrent.duration._
+import scala.util.Try
 
 object Application extends Controller {
-
   private lazy val system = ActorSystem("mamk")
-  var scheduler: Option[Cancellable] = None
+  private lazy val formatter = DateTimeFormat.forPattern("ddMMyy")
 
-  implicit val bindingModule = Configuration
+  var scheduler: Option[Cancellable] = None
 
   def tick = Action {
     println("Tick received")
@@ -22,10 +23,10 @@ object Application extends Controller {
     Ok
   }
 
-  def parser = Action {
-    val actor = system.actorOf(Props[ParserActor])
+  def parser(start: String) = Action {
+    val parserActor = system.actorOf(Props[ParserActor])
     val timerActor = system.actorOf(Props[TimerActor])
-    actor ! ""
+    parserActor ! Option(formatter.parseDateTime(start))
     timerActor ! "Tick"
     Ok
   }
