@@ -1,30 +1,26 @@
-package com.shika.mamk.parser.parser
+package com.shika.mamk.parser.service
 
-import java.time.format.DateTimeFormatter
-
-import com.escalatesoft.subcut.inject.{Injectable, BindingModule}
-import com.shika.mamk.parser.model.{StudentDataModel, StudentCalendarEvent}
+import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
+import com.shika.mamk.parser.helper.ParserHelper._
+import com.shika.mamk.parser.model.StudentCalendarEvent
+import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
 import com.shika.mamk.rest.helper.JsonHelper
-import com.shika.mamk.rest.model.{ParseDate, Param, QueryParam}
+import com.shika.mamk.rest.model.ParseDate
 import com.shika.mamk.rest.model.classes.Event
 import org.apache.http.auth.{AuthScope, NTCredentials}
-import org.apache.http.client.HttpClient
-import org.apache.http.client.config.{RequestConfig, AuthSchemes}
+import org.apache.http.client.config.{AuthSchemes, RequestConfig}
 import org.apache.http.client.entity.UrlEncodedFormEntity
-import org.apache.http.client.methods.{HttpRequestBase, HttpGet, HttpPost}
+import org.apache.http.client.methods.{HttpGet, HttpPost, HttpRequestBase}
 import org.apache.http.client.utils.URIBuilder
-import org.apache.http.impl.client.{CloseableHttpClient, HttpClients, BasicCredentialsProvider}
+import org.apache.http.impl.client.{BasicCredentialsProvider, CloseableHttpClient, HttpClients}
 import org.apache.http.message.BasicNameValuePair
-import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import com.shika.mamk.rest.AppKeys._
 
 import scala.collection.JavaConverters._
-import com.shika.mamk.parser.helper.ParserHelper._
 import scala.io.Source
 
-class StudentParserImpl (implicit val bindingModule: BindingModule, implicit val startDate: DateTime)
+class StudentParserImpl (implicit val bindingModule: BindingModule)
   extends StudentParser with Injectable {
 
   override def parseEvents:  (Int, Int) = parseCalendar(EventListName, EventViewName, Event.Default)

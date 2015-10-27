@@ -1,23 +1,20 @@
 package com.shika.mamk.parser.helper
 
-import java.security.cert.X509Certificate
-
 import com.shika.mamk.parser.model.StudentEvent
+import com.shika.mamk.parser.service._
 import com.shika.mamk.rest.helper.JsonHelper
 import com.shika.mamk.rest.model.ParseDate
 import com.shika.mamk.rest.model.classes.{Course, Lesson}
 import org.apache.http.client.entity.UrlEncodedFormEntity
-import org.apache.http.client.methods.{HttpRequestBase, HttpPost}
+import org.apache.http.client.methods.{HttpPost, HttpRequestBase}
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.apache.http.message.BasicNameValuePair
-import org.apache.http.ssl.{SSLContextBuilder, TrustStrategy}
 import org.apache.http.util.EntityUtils
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import com.shika.mamk.parser.parser._
 
 import scala.collection.JavaConverters._
-import scala.io.{Codec, Source}
+import scala.io.Source
 import scala.util.matching.Regex
 
 object ParserHelper {

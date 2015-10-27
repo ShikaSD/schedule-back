@@ -4,11 +4,15 @@ import java.nio.charset.CodingErrorAction
 import java.security.cert.X509Certificate
 
 import com.shika.mamk.rest.model.classes.Event
-import org.apache.http.ssl.{TrustStrategy, SSLContextBuilder}
+import org.apache.http.ssl.{SSLContextBuilder, TrustStrategy}
+import org.joda.time.{DateTime, DateTimeConstants}
 
 import scala.io.Codec
 
-package object parser {
+package object service {
+
+  val startDate = DateTime.now.withDayOfWeek(DateTimeConstants.MONDAY)
+
   //Dont use this for other purposes (for any you can), please
   val Login    = "oansh006"
   val Password = "t43aZHLn"

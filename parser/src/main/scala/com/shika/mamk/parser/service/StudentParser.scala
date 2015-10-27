@@ -1,4 +1,4 @@
-package com.shika.mamk.parser.parser
+package com.shika.mamk.parser.service
 
 trait StudentParser {
   def parseEvents: (Int, Int)

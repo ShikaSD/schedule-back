@@ -1,4 +1,4 @@
-package com.shika.mamk.parser.parser
+package com.shika.mamk.parser.service
 
 import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.helper.ParserHelper._
@@ -6,10 +6,10 @@ import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
 import com.shika.mamk.rest.model.classes._
 import com.shika.mamk.rest.model.{Param, ParseDate, QueryParam}
+import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
-import org.joda.time.{DateTime, DateTimeConstants, DateTimeZone}
 
-class ScheduleParserImpl(implicit val bindingModule: BindingModule, implicit val startDate: DateTime)
+class ScheduleParserImpl(implicit val bindingModule: BindingModule)
   extends ScheduleParser with Injectable {
 
   private val dateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")

@@ -33,5 +33,5 @@ lazy val play = (project in file("play"))
   .dependsOn(parser)
 
 lazy val root = (project in file("."))
-  .settings(run in Compile <<= (run in Compile) in play)
+  .settings(run   in Compile <<= (run   in Compile) in play)
   .settings(stage in Compile <<= (stage in Compile) in play)

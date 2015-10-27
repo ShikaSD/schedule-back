@@ -2,10 +2,11 @@ package com.shika.mamk.web.actors
 
 import akka.actor.Actor
 import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
-import com.shika.mamk.parser.parser.ScheduleParser
+import com.shika.mamk.parser.service.{ScheduleParser, StudentParser}
 import com.shika.mamk.web.util.Configuration
 import controllers.Application
-import org.joda.time.{DateTimeConstants, DateTime}
+import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
@@ -15,17 +16,23 @@ class ParserActor extends Actor
 
   implicit val bindingModule: BindingModule = Configuration
   private lazy val schedule = inject[ScheduleParser]
+  private lazy val student  = inject[StudentParser]
+
+  private lazy val log = Logger(getClass.getName)
 
   private def parse(start: DateTime) = {
     Future( schedule parseRooms )
-
-    implicit val startDate = start.withDayOfWeek(DateTimeConstants.MONDAY)
+    //TODO: Implement parsing from start
 
     schedule.parseGroups foreach { g =>
       val (added, deleted) = schedule.parseLessons(g)
-      println(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
+      log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
     }
-    println(s"End of parsing")
+
+    student.parseChanges
+    student.parseEvents
+
+    log.info(s"End of parsing")
     cancelTick()
   }
 

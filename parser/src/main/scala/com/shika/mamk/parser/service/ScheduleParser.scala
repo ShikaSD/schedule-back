@@ -1,4 +1,4 @@
-package com.shika.mamk.parser.parser
+package com.shika.mamk.parser.service
 
 import com.shika.mamk.rest.model.classes.{Group, Room}
 
