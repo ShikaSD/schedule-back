@@ -6,8 +6,8 @@ import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
 import com.shika.mamk.rest.model.classes._
 import com.shika.mamk.rest.model.{Param, ParseDate, QueryParam}
-import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 
 class ScheduleParserImpl(implicit val bindingModule: BindingModule)
   extends ScheduleParser with Injectable {
@@ -79,7 +79,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
     Room query
   }
 
-  override def parseLessons(group: Group) = {
+  override def parseLessons(group: Group)(implicit startDate: DateTime) = {
     var deleted = 0
     var created = 0
 

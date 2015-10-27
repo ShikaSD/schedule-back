@@ -5,7 +5,7 @@ import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
 import com.shika.mamk.parser.service.{ScheduleParser, StudentParser}
 import com.shika.mamk.web.util.Configuration
 import controllers.Application
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeConstants}
 import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
@@ -22,7 +22,8 @@ class ParserActor extends Actor
 
   private def parse(start: DateTime) = {
     Future( schedule parseRooms )
-    //TODO: Implement parsing from start
+
+    implicit val startDate = start.withDayOfWeek(DateTimeConstants.MONDAY)
 
     schedule.parseGroups foreach { g =>
       val (added, deleted) = schedule.parseLessons(g)

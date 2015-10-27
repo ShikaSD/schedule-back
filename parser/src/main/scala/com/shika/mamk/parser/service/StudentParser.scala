@@ -1,6 +1,8 @@
 package com.shika.mamk.parser.service
 
+import org.joda.time.DateTime
+
 trait StudentParser {
-  def parseEvents: (Int, Int)
-  def parseChanges: (Int, Int)
+  def parseEvents (implicit startDate: DateTime): (Int, Int)
+  def parseChanges(implicit startDate: DateTime): (Int, Int)
 }

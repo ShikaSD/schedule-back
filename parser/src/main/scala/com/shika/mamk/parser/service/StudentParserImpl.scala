@@ -15,6 +15,7 @@ import org.apache.http.client.methods.{HttpGet, HttpPost, HttpRequestBase}
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.impl.client.{BasicCredentialsProvider, CloseableHttpClient, HttpClients}
 import org.apache.http.message.BasicNameValuePair
+import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 
 import scala.collection.JavaConverters._
@@ -23,13 +24,16 @@ import scala.io.Source
 class StudentParserImpl (implicit val bindingModule: BindingModule)
   extends StudentParser with Injectable {
 
-  override def parseEvents:  (Int, Int) = parseCalendar(EventListName, EventViewName, Event.Default)
-  override def parseChanges: (Int, Int) = parseCalendar(CancelledListName, CancelledListName, Event.Cancelled)
-
   private val requestFormatter = DateTimeFormat.forPattern("dd.MM.yyyy")
   private val dateFormatter    = DateTimeFormat.forPattern("dd.MM.yyyy HH:mm")
 
   private val OptionNumber = "63"
+
+  override def parseEvents (implicit startDate: DateTime) =
+    parseCalendar(EventListName, EventViewName, Event.Default)
+
+  override def parseChanges(implicit startDate: DateTime) =
+    parseCalendar(CancelledListName, CancelledListName, Event.Cancelled)
 
   private lazy val requestConfig = RequestConfig.custom()
     .setSocketTimeout(1000000)
