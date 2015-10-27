@@ -59,7 +59,7 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
           .search("<d:FormDigestValue>(.*?)</".r).get
   }
 
-  private def parseCalendar(listName: String, viewName: String, eventType: String) = {
+  private def parseCalendar(listName: String, viewName: String, eventType: String)(implicit startDate: DateTime) = {
     val httpClient = getHttpClient
     val rdigest    = getRequestDigest(httpClient)
 
