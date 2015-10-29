@@ -1,20 +1,26 @@
 package com.shika.mamk.parser.service
 
 import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
-import com.shika.mamk.parser.helper.ParserHelper._
 import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
 import com.shika.mamk.rest.model.classes._
 import com.shika.mamk.rest.model.{Param, ParseDate, QueryParam}
+import org.apache.http.client.entity.UrlEncodedFormEntity
+import org.apache.http.client.methods.HttpPost
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.message.BasicNameValuePair
+import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.joda.time.{DateTime, DateTimeZone}
+
+import scala.collection.JavaConverters._
+import scala.io.Source
 
 class ScheduleParserImpl(implicit val bindingModule: BindingModule)
   extends ScheduleParser with Injectable {
 
-  private val dateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")
+  private val tilatDateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")
+  private val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
 
-  DateTimeZone.setDefault(DateTimeZone.forID("Europe/Helsinki"))
 
   override def parseGroups = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
@@ -197,8 +203,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
       //Date
       val time = splitParts.head.split(" - ")
       val date = part.search(datePattern).get
-      val start = dateFormat.parseDateTime(date + time(0))
-      val end = dateFormat.parseDateTime(date + time(1))
+      val start = tilatDateFormat.parseDateTime(date + time(0))
+      val end = tilatDateFormat.parseDateTime(date + time(1))
 
       //There can be nothing in array, so skip it
       //if (splitParts.length < 2) return
@@ -231,6 +237,77 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
         teacher = teacher,
         room = room
       )
+    }
+  }
+
+  private def getHtml(url: String) = {
+    Source.fromURL(url).mkString
+  }
+
+  private def formUrls(name: String, start: DateTime): Array[(Int, String)] = {
+    (0 to WeeksToParse) map { num =>
+      (num + 1, start.plusWeeks(num))
+    } map { tuple =>
+      val dString = tuple._2.toString(DateTimeFormat.forPattern("yyMMdd"))
+      (tuple._1, ScheduleUrl + s"$dString$dString$dString&cluokka=$name")
+    } toArray
+  }
+
+  private def getCourseId(string: String) = {
+    val addressPattern = "\\.\\.(.*?)\'".r
+    val namePattern = "<th>Selite[\\s\\S]*?<tr[\\s\\S]*?<td>.*?<td>.*?<td>.*?<td>.*?<td>(.*?)</td>".r
+    val cidPattern = "([A-Z0-9]{4,} )".r
+    val url = "http://tilat.mikkeliamk.fi" + string.search(addressPattern).get
+
+    val html = getHtml(url)
+    val name = html.search(namePattern).get
+    name.search(cidPattern)
+      .getOrElse(name)
+      .replaceAll(" ", "")
+  }
+
+  private def getCourse(lesson: Lesson) = {
+    val httpClient = HttpClients.custom()
+      .setSSLContext(sslContext)
+      .build
+
+    val coursePattern = (
+      """<td width="1%"[\s\S]*?showmode">(.*?)</div>[\s\S]*?</td>[\s\S]*?""" +
+        """<td[\s\S]*?showmode">(.*?)</div>[\s\S]*?</td>[\s\S]*?""" +
+        """<td[\s\S]*?</td>[\s\S]*?""" +
+        """<td[\s\S]*?>(.*?)</td>[\s\S]*?""" +
+        """<td[\s\S]*?</td>[\s\S]*?""" +
+        """<td[\s\S]*?</td>[\s\S]*?""" +
+        """<td[\s\S]*?showmode">(.*?)</div>[\s\S]*?</td>""").r
+
+    try {
+      val request = new HttpPost(SoleOpsUrl)
+      val data = new UrlEncodedFormEntity(
+        Seq(
+          new BasicNameValuePair("ojtunnus", lesson.courseId),
+          new BasicNameValuePair("ryhma", lesson.group)
+        ).asJava
+      )
+      request.setEntity(data)
+      request.setHeader("Content-Type", "application/x-www-form-urlencoded")
+      request.setHeader("Accept", "text/html")
+
+      val body = httpClient.getResponse(request)
+
+      for (m <- coursePattern findFirstMatchIn body)
+        yield {
+          val dates = (m group 3).split("-").map(s => Some( ParseDate(soleOpsDateFormat.parseDateTime(s)) ))
+          Course(
+            courseId = m group 1,
+            name = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),
+            start = dates(0),
+            end = dates(1),
+            group = m group 4,
+            parent = true
+          )
+        }
+    } finally {
+      httpClient.close()
     }
   }
 }

@@ -1,8 +1,7 @@
 package com.shika.mamk.parser.service
 
 import com.escalatesoft.subcut.inject.{BindingModule, Injectable}
-import com.shika.mamk.parser.helper.ParserHelper._
-import com.shika.mamk.parser.model.StudentCalendarEvent
+import com.shika.mamk.parser.model.{StudentCalendarEvent, StudentEvent}
 import com.shika.mamk.rest.AppKeys._
 import com.shika.mamk.rest.RestService
 import com.shika.mamk.rest.helper.JsonHelper
@@ -28,12 +27,8 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
   private val dateFormatter    = DateTimeFormat.forPattern("dd.MM.yyyy HH:mm")
 
   private val OptionNumber = "63"
-
-  override def parseEvents (implicit startDate: DateTime) =
-    parseCalendar(EventListName, EventViewName, Event.Default)
-
-  override def parseChanges(implicit startDate: DateTime) =
-    parseCalendar(CancelledListName, CancelledListName, Event.Cancelled)
+  private val DataSourceId = "00000000-0000-0000-0000-000000000000"
+  private val ViewType     = "month"
 
   private lazy val requestConfig = RequestConfig.custom()
     .setSocketTimeout(1000000)
@@ -44,6 +39,18 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
   private val credentialsProvider = new BasicCredentialsProvider()
   credentialsProvider.setCredentials(AuthScope.ANY, new NTCredentials(Login, Password, "", ""))
 
+  override def parseEvents (implicit startDate: DateTime) =
+    parseCalendar(
+      getViewNames(FullDescSource(Event.Default)),
+      Event.Default
+    )
+
+  override def parseChanges(implicit startDate: DateTime) =
+    parseCalendar(
+      getViewNames(FullDescSource(Event.Cancelled)),
+      Event.Cancelled
+    )
+
   private def getHttpClient = {
     HttpClients.custom()
       .setDefaultCredentialsProvider(credentialsProvider)
@@ -51,34 +58,57 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
       .build()
   }
 
-  //Need to confirm auth
+  def getViewNames(url: String) = {
+    val listNameRegex = """pageListId:"\{(.*?)\}"""".r
+    val viewNameRegex = """storageId="(.*?)";""".r
+
+    val httpClient = getHttpClient
+    val request = new HttpGet(url)
+
+    val response = httpClient.getResponse(request)
+
+    val listName = response.search(listNameRegex).getOrElse("")
+    val viewName = response.search(viewNameRegex).getOrElse("")
+
+    (listName, viewName)
+  }
+
+  private def getEvent(response: String) = {
+    val eventPattern = """\{"ListData":(\{"ContentType":.*?\}),"ListSchema""".r
+
+    response.search(eventPattern) map JsonHelper.fromJson[StudentEvent]
+  }
+
   private def getRequestDigest(httpClient: CloseableHttpClient) = {
     val pageReq = new HttpPost(TokenUrl)
     val page = httpClient.execute(pageReq)
     Source.fromInputStream(page.getEntity.getContent).mkString
-          .search("<d:FormDigestValue>(.*?)</".r).get
+      .search("<d:FormDigestValue>(.*?)</".r).get
   }
 
-  private def parseCalendar(listName: String, viewName: String, eventType: String)(implicit startDate: DateTime) = {
+  private def parseCalendar(params: (String, String), eventType: String)(implicit startDate: DateTime) = {
+    val (listName, viewName) = params
+
     val httpClient = getHttpClient
     val rdigest    = getRequestDigest(httpClient)
 
     var added = 0
     var deleted = 0
 
-    (0 to monthsToParse).map(num => requestFormatter.print(startDate plusMonths num)).foreach {
+    (0 to MonthsToParse).map(num => requestFormatter.print(startDate plusMonths num)).foreach {
       date =>
       try {
         val request = new HttpPost(CalendarUrl)
         request.setHeader("X-RequestDigest", rdigest)
 
         val params = Seq(
-          new BasicNameValuePair("cmd", "query"),
-          new BasicNameValuePair("viewType", "month"),
-          new BasicNameValuePair("selectedDate", date),
-          new BasicNameValuePair("options", OptionNumber),
-          new BasicNameValuePair("listName", listName),
-          new BasicNameValuePair("viewName", viewName)
+          new BasicNameValuePair("cmd",           "query"),
+          new BasicNameValuePair("viewType",      ViewType),
+          new BasicNameValuePair("selectedDate",  date),
+          new BasicNameValuePair("options",       OptionNumber),
+          new BasicNameValuePair("dataSourceId",  DataSourceId),
+          new BasicNameValuePair("listName",      listName),
+          new BasicNameValuePair("viewName",      viewName)
         ).asJava
 
         request.setEntity(new UrlEncodedFormEntity(params))
@@ -104,7 +134,7 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
   }
 
   private def parseEvent(httpClient: CloseableHttpClient, data: Seq[Int], strings: Seq[String], eventType: String) = {
-    val id = data map (num => strings(num)) head
+    val id = strings (data head)
 
     val request = new HttpGet(FullDescUrl(eventType))
 
@@ -118,6 +148,7 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
     getEvent(httpClient.getResponse(request)) map {
       e =>
         Event(
+          identifier  = id.toLong,
           name        = e.Title,
           description = e.Description,
           start       = Some( ParseDate(dateFormatter.parseDateTime(e.EventDate)) ),
@@ -135,13 +166,14 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
       key =>
         RestService.initialize(key)
         val events = Event query()
-        parsed.filter(e => !events.exists(_ equals e))
+        val created = parsed.filter(e => !events.exists(_ equals e))
+          .map {
+            added += 1
+            _.create()
+          }
+
+        events.filter(e => created.exists(_.identifier == e.identifier))
               .foreach {
-                added += 1
-                _.create()
-              }
-        events.filter(e => !parsed.exists(_ equals e))
-              .foreach{
                 deleted += 1
                 _.delete()
               }

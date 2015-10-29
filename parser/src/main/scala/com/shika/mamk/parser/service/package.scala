@@ -4,16 +4,24 @@ import java.nio.charset.CodingErrorAction
 import java.security.cert.X509Certificate
 
 import com.shika.mamk.rest.model.classes.Event
+import org.apache.http.client.methods.HttpRequestBase
+import org.apache.http.impl.client.CloseableHttpClient
 import org.apache.http.ssl.{SSLContextBuilder, TrustStrategy}
+import org.apache.http.util.EntityUtils
+import org.joda.time.DateTimeZone
 
-import scala.io.Codec
+import scala.io.{Codec, Source}
+import scala.util.matching.Regex
 
 package object service {
-
+  //Set default timezone 
+  DateTimeZone.setDefault(DateTimeZone.forID("Europe/Helsinki"))
+  
   //Dont use this for other purposes (for any you can), please
   val Login    = "oansh006"
   val Password = "t43aZHLn"
 
+  //Addresses for student parser
   val TokenUrl    = "https://student.xamk.fi/_api/contextinfo"
   val CalendarUrl = "https://student.xamk.fi/_layouts/15/CalendarService.ashx"
 
@@ -23,15 +31,11 @@ package object service {
   )
 
   val FullDescSource = Map(
-    Event.Cancelled -> "https://student.xamk.fi/Lists/PerututTunnit/calendar.aspx",
-    Event.Default   -> "https://student.xamk.fi/Lists/Tapahtumat/calendar.aspx"
+    Event.Default   -> "https://student.xamk.fi/Lists/Tapahtumat/calendar.aspx",
+    Event.Cancelled -> "https://student.xamk.fi/Lists/PerututTunnit/calendar.aspx"
   )
 
-  val EventListName     = "2123cc38-41fc-41c2-9fd0-92d8dd3cedf9"
-  val EventViewName     = "e71b1911-c604-4c5b-86de-4e2475031945"
-  val CancelledListName = "af485b8e-ef45-443c-a80d-4898d90947fd"
-  val CancelledViewName = "904b1bec-ac88-46ff-8da4-d966a6ee5d32"
-
+  //Addresses for schedule parser
   val ScheduleUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
   val SoleOpsUrl  = "https://soleops.mamk.fi/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
 
@@ -43,14 +47,31 @@ package object service {
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Savonlinna%2Fmuut_tilat%7C%7CSln&guest=%2Fmamk&lang=eng",
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=STK%2FElixiiri%7C%7CSTK&guest=%2Fmamk&lang=eng")
 
+  //Amount of parsing
+  val WeeksToParse = 24
+  val MonthsToParse = 6
+
+  //Define default context for https connections
+  val sslContext = new SSLContextBuilder().loadTrustMaterial(new TrustStrategy {
+    def isTrusted(arg0: Array[X509Certificate], arg1: String): Boolean = true
+  }).build
+
+  //Define default codec for requests
   implicit val codec = Codec("ISO-8859-1")
   codec.onMalformedInput(CodingErrorAction.REPLACE)
   codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
 
-  val weeksToParse = 24
-  val monthsToParse = 6
+  //Extensions for easier implementations of things
+  implicit class HttpClientOpts(val client: CloseableHttpClient) extends AnyVal {
+    def getResponse(request: HttpRequestBase) = {
+      val entity = client.execute(request).getEntity
+      val result = Source.fromInputStream(entity.getContent).mkString
+      EntityUtils.consume(entity)
+      result
+    }
+  }
 
-  val sslContext = new SSLContextBuilder().loadTrustMaterial(new TrustStrategy {
-    def isTrusted(arg0: Array[X509Certificate], arg1: String): Boolean = true
-  }).build
+  implicit class StringOpts(val string: String) extends AnyVal {
+    def search(regex: Regex): Option[String] =  for (m <- regex findFirstMatchIn string) yield m group 1
+  }
 }
