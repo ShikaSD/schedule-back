@@ -1,25 +1,25 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{ParseDate, RestModel, RestObject}
+import com.shika.mamk.rest.model.{BaseModel, BaseObject, ParseDate}
 
 case class Event (
   objectId    :String            = "",
   createdAt   :Option[ParseDate] = None,
   updatedAt   :Option[ParseDate] = None,
-  identifier  :Long               = 0,
+  identifier  :Long              = 0,
   name        :String            = "",
   description :String            = "",
   start       :Option[ParseDate] = None,
   end         :Option[ParseDate] = None,
   modified    :Option[ParseDate] = None,
   eventType   :String            = Event.Default
-) extends RestModel {
+) extends BaseModel {
 
-  def get()    = this + Event.getAdapter.get(objectId)
-  def create() = this + Event.getAdapter.create(this)
-  def update() = this + Event.getAdapter.update(objectId, this)
-  def delete() = this + Event.getAdapter.delete(objectId)
+  def get    = this + Event.getAdapter.get(objectId)
+  def create = this + Event.getAdapter.create(this)
+  def update = this + Event.getAdapter.update(objectId, this)
+  def delete = this + Event.getAdapter.delete(objectId)
 
   def + (event: Event) = {
     val objectId    = if(event.objectId != "")     event.objectId     else this.objectId
@@ -40,14 +40,14 @@ case class Event (
     (identifier == event.identifier) &&
     (name == event.name) &&
     (description == event.description) &&
-    (start.get    isEqual event.start.get) &&
-    (end.get      isEqual event.end.get) &&
-    (modified.get isEqual event.modified.get) &&
+    (start.get    == event.start.get) &&
+    (end.get      == event.end.get) &&
+    (modified.get == event.modified.get) &&
     (eventType == eventType)
   }
 }
 
-object Event extends RestObject {
+object Event extends BaseObject {
   type T = Event
   protected val apiPath: String = "Event"
   protected val _converter = new JsonConverter[T]

@@ -38,12 +38,12 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
 
       //Delete unnecessary names
       groups.view.filter(s => !parsedNames.contains(s.name))
-        .foreach(_.delete())
+        .foreach(_.delete)
 
       //Put new ones
       parsedNames.view.filter(s => !groups.exists(_.name == s))
         .map(s => Group(name = s))
-        .foreach(_.create())
+        .foreach(_.create)
     }
 
     Group query
@@ -76,10 +76,10 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
       val rooms = Room query
 
       rooms.view.filter(s => !parsed.exists(_ equals s))
-        .foreach(_.delete())
+        .foreach(_.delete)
 
       parsed.view.filter(s => !rooms.exists(_ equals s))
-        .foreach(_.create())
+        .foreach(_.create)
     }
 
     Room query
@@ -102,7 +102,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
             ))
 
           parsed.view.filter(s => !lessons.exists(_ equals s))
-            .map(_.create())
+            .map(_.create)
             .foreach {lesson =>
               addCourse(lesson)
               addTeacher(lesson)
@@ -112,7 +112,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
 
           lessons.view.filter(s => !parsed.exists(_ equals s))
             .foreach { g =>
-              g.delete()
+              g.delete
               deleted += 1
             }
 
@@ -138,20 +138,20 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
     if(courses.isEmpty) {
       //Create parent course
       getCourse(lesson) match {
-        case Some(x) => x.create()
+        case Some(x) => x.create
         case None    => println(s"No courses found in soleops with id ${lesson.courseId} and group ${lesson.group}")
       }
     }
 
     if (!courses.exists(_ equals newCourse))
-      newCourse.create()
+      newCourse.create
     else
       courses.filter(_ equals newCourse)
         .map { c =>
           val start = if(c.start.get isAfter  newCourse.start.get) newCourse.start else c.start
           val end   = if(c.end.get   isBefore newCourse.end.get)   newCourse.end   else c.end
 
-          c.copy(start = start, end = end).update()
+          c.copy(start = start, end = end).update
         }
   }
 
@@ -165,7 +165,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
       )
 
     parsedTeachers.filter(s => !teachers.exists(_.name == s))
-      .foreach(s => Teacher(name = s).create())
+      .foreach(s => Teacher(name = s).create)
   }
 
   private def addRoom(lesson: Lesson) = {
@@ -178,7 +178,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
       )
 
     parsedRooms.filter(s => !rooms.exists(_.name == s))
-      .foreach(s => Room(name = s).create())
+      .foreach(s => Room(name = s).create)
   }
 
   private def parseWeek(url: String, group: Group) = {
@@ -231,8 +231,8 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
       Lesson(
         courseId = cid,
         name = name,
-        start = Some( ParseDate(start) ),
-        end = Some( ParseDate(end) ),
+        start = ParseDate(start),
+        end = ParseDate(end),
         group = group.name,
         teacher = teacher,
         room = room
@@ -296,7 +296,7 @@ class ScheduleParserImpl(implicit val bindingModule: BindingModule)
 
       for (m <- coursePattern findFirstMatchIn body)
         yield {
-          val dates = (m group 3).split("-").map(s => Some( ParseDate(soleOpsDateFormat.parseDateTime(s)) ))
+          val dates = (m group 3).split("-").map(s => ParseDate(soleOpsDateFormat.parseDateTime(s)))
           Course(
             courseId = m group 1,
             name = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),

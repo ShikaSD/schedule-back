@@ -8,12 +8,12 @@ case class Teacher (
   createdAt: Option[ParseDate] = None,
   updatedAt: Option[ParseDate] = None,
   name: String                = ""
-) extends RestModel {
+) extends BaseModel {
 
-  def get()    = this + Teacher.getAdapter.get(objectId)
-  def create() = this + Teacher.getAdapter.create(this)
-  def update() = this + Teacher.getAdapter.update(objectId, this)
-  def delete() = this + Teacher.getAdapter.delete(objectId)
+  def get    = this + Teacher.getAdapter.get(objectId)
+  def create = this + Teacher.getAdapter.create(this)
+  def update = this + Teacher.getAdapter.update(objectId, this)
+  def delete = this + Teacher.getAdapter.delete(objectId)
 
   def + (teacher: Teacher) = {
     val objectId  = if(teacher.objectId != "")     teacher.objectId   else this.objectId
@@ -27,7 +27,7 @@ case class Teacher (
   def equals (teacher: Teacher) = this.name == teacher.name
 }
 
-object Teacher extends RestObject {
+object Teacher extends BaseObject {
   type T = Teacher
   protected val apiPath: String = "Teacher"
   protected val _converter = new JsonConverter[T]

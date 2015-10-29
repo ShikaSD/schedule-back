@@ -151,9 +151,9 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
           identifier  = id.toLong,
           name        = e.Title,
           description = e.Description,
-          start       = Some( ParseDate(dateFormatter.parseDateTime(e.EventDate)) ),
-          end         = Some( ParseDate(dateFormatter.parseDateTime(e.EndDate)) ),
-          modified    = Some( ParseDate(dateFormatter.parseDateTime(e.Modified)) ),
+          start       = ParseDate(dateFormatter.parseDateTime(e.EventDate)),
+          end         = ParseDate(dateFormatter.parseDateTime(e.EndDate)),
+          modified    = ParseDate(dateFormatter.parseDateTime(e.Modified)),
           eventType   = eventType
         )
     }
@@ -169,13 +169,13 @@ class StudentParserImpl (implicit val bindingModule: BindingModule)
         val created = parsed.filter(e => !events.exists(_ equals e))
           .map {
             added += 1
-            _.create()
+            _.create
           }
 
         events.filter(e => created.exists(_.identifier == e.identifier))
               .foreach {
                 deleted += 1
-                _.delete()
+                _.delete
               }
     }
     (added, deleted)

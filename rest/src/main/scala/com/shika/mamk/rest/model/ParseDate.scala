@@ -4,8 +4,9 @@ import org.joda.time.DateTime
 
 case class ParseDate(iso: DateTime, __type :String =  "Date") {
 
-  def isEqual(date: ParseDate) = {
-    iso isEqual date.iso
+  override def equals(any: Any) = any match {
+    case ParseDate(date, _) => iso isEqual date
+    case _ => false
   }
 
   def isAfter(date: ParseDate) = {

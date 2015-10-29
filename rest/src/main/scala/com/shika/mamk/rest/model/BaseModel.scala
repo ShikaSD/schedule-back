@@ -3,13 +3,14 @@ package com.shika.mamk.rest.model
 import com.shika.mamk.rest.helper.{JsonConverter, JsonHelper}
 import com.shika.mamk.rest.{RestDefinition, RestService}
 
-trait RestModel {
+abstract class BaseModel {
   def objectId: String
   def createdAt: Option[ParseDate]
+  def updatedAt: Option[ParseDate]
 }
 
-trait RestObject {
-  type T <: RestModel
+abstract class BaseObject {
+  type T <: BaseModel
 
   protected val dOrder: String = null
   protected val dSkip = 0

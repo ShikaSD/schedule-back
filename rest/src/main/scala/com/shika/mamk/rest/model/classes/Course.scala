@@ -1,7 +1,7 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{ParseDate, RestModel, RestObject}
+import com.shika.mamk.rest.model.{BaseModel, BaseObject, ParseDate}
 
 case class Course (
   objectId  :String            = "",
@@ -14,12 +14,12 @@ case class Course (
   start     :Option[ParseDate]  = None,
   end       :Option[ParseDate]  = None,
   parent    :Boolean           = false
-) extends RestModel {
+) extends BaseModel {
 
-  def get()    = this + Course.getAdapter.get(objectId)
-  def create() = this + Course.getAdapter.create(this)
-  def update() = this + Course.getAdapter.update(objectId, this)
-  def delete() = this + Course.getAdapter.delete(objectId)
+  def get    = this + Course.getAdapter.get(objectId)
+  def create = this + Course.getAdapter.create(this)
+  def update = this + Course.getAdapter.update(objectId, this)
+  def delete = this + Course.getAdapter.delete(objectId)
 
   def + (course: Course) = {
     val objectId  = if(course.objectId != "")     course.objectId   else this.objectId
@@ -44,7 +44,7 @@ case class Course (
   }
 }
 
-object Course extends RestObject {
+object Course extends BaseObject {
   type T = Course
   protected val apiPath: String = "Course"
   protected val _converter = new JsonConverter[T]

@@ -9,12 +9,12 @@ case class Room (
   updatedAt:   Option[ParseDate] = None,
   name:        String           = "",
   description: String           = ""
-) extends RestModel {
+) extends BaseModel {
 
-  def get()    = this + Room.getAdapter.get(objectId)
-  def create() = this + Room.getAdapter.create(this)
-  def update() = this + Room.getAdapter.update(objectId, this)
-  def delete() = this + Room.getAdapter.delete(objectId)
+  def get    = this + Room.getAdapter.get(objectId)
+  def create = this + Room.getAdapter.create(this)
+  def update = this + Room.getAdapter.update(objectId, this)
+  def delete = this + Room.getAdapter.delete(objectId)
 
   def + (room: Room) = {
     val objectId    = if(room.objectId != "")     room.objectId     else this.objectId
@@ -31,7 +31,7 @@ case class Room (
   }
 }
 
-object Room extends RestObject {
+object Room extends BaseObject {
   type T = Room
   protected val apiPath: String = "Room"
   protected val _converter = new JsonConverter[T]

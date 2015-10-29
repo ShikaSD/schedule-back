@@ -1,25 +1,25 @@
 package com.shika.mamk.rest.model.classes
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.{ParseDate, RestModel, RestObject}
+import com.shika.mamk.rest.model.{BaseModel, BaseObject, ParseDate}
 
 case class Lesson (
   objectId  :String            = "",
-  createdAt :Option[ParseDate]  = None,
-  updatedAt :Option[ParseDate]  = None,
+  createdAt :Option[ParseDate] = None,
+  updatedAt :Option[ParseDate] = None,
   name      :String            = "",
   courseId  :String            = "",
   teacher   :String            = "",
   group     :String            = "",
   room      :String            = "",
-  start     :Option[ParseDate]  = None,
-  end       :Option[ParseDate]  = None
-) extends RestModel {
+  start     :Option[ParseDate] = None,
+  end       :Option[ParseDate] = None
+) extends BaseModel {
 
-  def get()    = this + Lesson.getAdapter.get(objectId)
-  def create() = this + Lesson.getAdapter.create(this)
-  def update() = this + Lesson.getAdapter.update(objectId, this)
-  def delete() = this + Lesson.getAdapter.delete(objectId)
+  def get    = this + Lesson.getAdapter.get(objectId)
+  def create = this + Lesson.getAdapter.create(this)
+  def update = this + Lesson.getAdapter.update(objectId, this)
+  def delete = this + Lesson.getAdapter.delete(objectId)
 
   def + (lesson: Lesson) = {
     val objectId  = if(lesson.objectId != "")     lesson.objectId   else this.objectId
@@ -47,7 +47,7 @@ case class Lesson (
   }
 }
 
-object Lesson extends RestObject {
+object Lesson extends BaseObject {
   type T = Lesson
   protected val apiPath: String = "Lesson"
   protected val _converter = new JsonConverter[T]

@@ -3,6 +3,7 @@ package com.shika.mamk.parser
 import java.nio.charset.CodingErrorAction
 import java.security.cert.X509Certificate
 
+import com.shika.mamk.rest.model.ParseDate
 import com.shika.mamk.rest.model.classes.Event
 import org.apache.http.client.methods.HttpRequestBase
 import org.apache.http.impl.client.CloseableHttpClient
@@ -74,4 +75,7 @@ package object service {
   implicit class StringOpts(val string: String) extends AnyVal {
     def search(regex: Regex): Option[String] =  for (m <- regex findFirstMatchIn string) yield m group 1
   }
+
+  implicit def str2Option(s: String): Option[String] = Some(s)
+  implicit def date2Option(s: ParseDate): Option[ParseDate] = Some(s)
 }

@@ -1,7 +1,7 @@
 package com.shika.mamk.rest
 
 import com.shika.mamk.rest.helper.JsonConverter
-import com.shika.mamk.rest.model.RestModel
+import com.shika.mamk.rest.model.BaseModel
 import retrofit.RequestInterceptor.RequestFacade
 import retrofit.RestAdapter.LogLevel
 import retrofit.{RequestInterceptor, RestAdapter}
@@ -14,7 +14,7 @@ object RestService {
     _key = Some(key)
   }
 
-  def getAdapter[T <: RestModel] (apiPath: String, converter: JsonConverter[T]) = {
+  def getAdapter[T <: BaseModel] (apiPath: String, converter: JsonConverter[T]) = {
 
     val request = new RequestInterceptor {
       override def intercept(requestFacade: RequestFacade): Unit = {

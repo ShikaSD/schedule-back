@@ -3,7 +3,7 @@ package com.shika.mamk.rest.helper
 import java.io.OutputStream
 import java.lang.reflect.Type
 
-import com.shika.mamk.rest.model.RestModel
+import com.shika.mamk.rest.model.BaseModel
 import retrofit.converter.Converter
 import retrofit.mime.{TypedInput, TypedOutput}
 
@@ -20,7 +20,7 @@ class JsonTypedOutput(bytes: Array[Byte]) extends TypedOutput {
   override def writeTo(out: OutputStream) = out.write(bytes)
 }
 
-class JsonConverter[T <: RestModel] (implicit man: Manifest[T]) extends Converter  {
+class JsonConverter[T <: BaseModel] (implicit man: Manifest[T]) extends Converter  {
 
   override def toBody(o: Any): TypedOutput = {
     try {

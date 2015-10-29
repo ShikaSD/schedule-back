@@ -15,26 +15,36 @@ class ParserActor extends Actor
   with Injectable {
 
   implicit val bindingModule: BindingModule = Configuration
-  private lazy val schedule = inject[ScheduleParser]
+  private lazy val scheduleParser = inject[ScheduleParser]
   private lazy val student  = inject[StudentParser]
 
   private lazy val log = Logger(getClass.getName)
 
   private def parse(start: DateTime) = {
-    Future( schedule parseRooms )
-
     implicit val startDate = start.withDayOfWeek(DateTimeConstants.MONDAY)
 
-    schedule.parseGroups foreach { g =>
-      val (added, deleted) = schedule.parseLessons(g)
-      log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
+    log.info("Parser started")
+
+    //Parsing in parallel threads
+    val schedule = Future {
+      scheduleParser.parseGroups foreach {g =>
+        val (added, deleted) = scheduleParser.parseLessons(g)
+        log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
+      }
     }
 
-    student.parseChanges
-    student.parseEvents
+    val parsing = for {
+      rooms   <- Future(scheduleParser.parseRooms)
+      s       <- schedule
+      changes <- Future(student.parseChanges)
+      events  <- Future(student.parseEvents)
+    } yield None
 
-    log.info(s"End of parsing")
-    cancelTick()
+    parsing.onSuccess {
+      case _ =>
+        log.info("End of parsing")
+        cancelTick()
+    }
   }
 
   private def cancelTick() =
