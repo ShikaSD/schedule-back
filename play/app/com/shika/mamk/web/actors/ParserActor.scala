@@ -26,20 +26,32 @@ class ParserActor extends Actor
     log.info("Parser started")
 
     //Parsing in parallel threads
-    def schedule = Future {
+    val schedule = Future {
+      log.info("Parsing groups and lessons...")
       scheduleParser.parseGroups foreach {g =>
         val (added, deleted) = scheduleParser.parseLessons(g)
         log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
       }
+      log.info("Groups and lessons parsed")
+    }
+    val changes = Future {
+      log.info("Parsing changes...")
+      studentParser.parseChanges
+      log.info("Changes parsed")
+    }
+    val events  = Future {
+      log.info("Parsing events...")
+      studentParser.parseEvents
+      log.info("Events parsed")
+    }
+    val rooms   = Future {
+      log.info("Parsing rooms...")
+      scheduleParser.parseRooms
+      log.info("Rooms parsed")
     }
 
     Future.sequence(
-      Seq(
-        Future(studentParser.parseChanges),
-        Future(studentParser.parseEvents),
-        Future(scheduleParser.parseRooms),
-        schedule
-      )
+      Seq( schedule, changes, events, rooms )
     ).onComplete({
       s =>
         log.info("End of parsing")
