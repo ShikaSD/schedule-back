@@ -16,7 +16,7 @@ class ParserActor extends Actor
 
   implicit val bindingModule: BindingModule = Configuration
   private lazy val scheduleParser = inject[ScheduleParser]
-  private lazy val student  = inject[StudentParser]
+  private lazy val studentParser  = inject[StudentParser]
 
   private lazy val log = Logger(getClass.getName)
 
@@ -26,7 +26,7 @@ class ParserActor extends Actor
     log.info("Parser started")
 
     //Parsing in parallel threads
-    val schedule = Future {
+    def schedule = Future {
       scheduleParser.parseGroups foreach {g =>
         val (added, deleted) = scheduleParser.parseLessons(g)
         log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
@@ -35,10 +35,10 @@ class ParserActor extends Actor
 
     Future.sequence(
       Seq(
+        Future(studentParser.parseChanges),
+        Future(studentParser.parseEvents),
         Future(scheduleParser.parseRooms),
-        schedule,
-        Future(student.parseChanges),
-        Future(student.parseEvents)
+        schedule
       )
     ).onComplete({
       s =>
