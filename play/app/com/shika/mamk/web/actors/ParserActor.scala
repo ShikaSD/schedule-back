@@ -33,18 +33,18 @@ class ParserActor extends Actor
       }
     }
 
-    val parsing = for {
-      rooms   <- Future(scheduleParser.parseRooms)
-      s       <- schedule
-      changes <- Future(student.parseChanges)
-      events  <- Future(student.parseEvents)
-    } yield None
-
-    parsing.onSuccess {
-      case _ =>
+    Future.sequence(
+      Seq(
+        Future(scheduleParser.parseRooms),
+        schedule,
+        Future(student.parseChanges),
+        Future(student.parseEvents)
+      )
+    ).onComplete({
+      s =>
         log.info("End of parsing")
         cancelTick()
-    }
+    })
   }
 
   private def cancelTick() =
