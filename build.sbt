@@ -1,4 +1,5 @@
 import sbt._
+import NativePackagerKeys._
 
 lazy val commonSettings = Seq(
   version := Version.app,
@@ -35,4 +36,4 @@ lazy val play = (project in file("play"))
 
 lazy val root = (project in file("."))
   .settings(run   in Compile <<= (run   in Compile) in play)
-  .settings(stage in Compile <<= (stage in Compile) in play)
+  .settings(NativePackagerKeys.stage in Compile <<= (NativePackagerKeys.stage in Compile) in play)
