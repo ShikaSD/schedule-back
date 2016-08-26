@@ -1,0 +1,63 @@
+package fi.shika.schedule.actors
+
+import akka.actor.Actor
+import com.google.inject.Inject
+import fi.shika.schedule.actors.ParserActor.Parse
+import org.joda.time.{DateTime, DateTimeConstants}
+import play.api.Logger
+
+object ParserActor {
+
+  case class Parse(date: DateTime = DateTime.now)
+}
+
+class ParserActor @Inject()(private val scheduleParser: ScheduleParser) extends Actor {
+
+  private lazy val log = Logger(getClass.getName)
+
+  private def parse(start: DateTime) = {
+    implicit val startDate = start.withDayOfWeek(DateTimeConstants.MONDAY)
+
+    log.info(s"Parser started at $startDate")
+
+    scheduleParser.parseGroups
+    scheduleParser.parseRooms
+    /*
+    //Parsing in parallel threads
+    val schedule = Future {
+      log.info("Parsing groups and lessons...")
+      scheduleParser.parseGroups foreach {g =>
+        val (added, deleted) = scheduleParser.parseLessons(g)
+        log.info(s"Parsed lessons for group ${g.name} added: $added, deleted $deleted")
+      }
+      log.info("Groups and lessons parsed")
+    }
+    val changes = Future {
+      log.info("Parsing changes...")
+      studentParser.parseChanges
+      log.info("Changes parsed")
+    }
+    val events  = Future {
+      log.info("Parsing events...")
+      studentParser.parseEvents
+      log.info("Events parsed")
+    }
+    val rooms   = Future {
+      log.info("Parsing rooms...")
+      scheduleParser.parseRooms
+      log.info("Rooms parsed")
+    }
+
+    Future.sequence(
+      Seq( schedule, changes, events, rooms )
+    ).onComplete({
+      s =>
+        log.info("End of parsing")
+    }) */
+  }
+
+  override def receive = {
+    case Parse(x: DateTime) =>
+      parse(x)
+  }
+}

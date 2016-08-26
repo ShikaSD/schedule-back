@@ -1,39 +1,14 @@
-import sbt._
-import NativePackagerKeys._
+version := Version.app
 
-lazy val commonSettings = Seq(
-  version := Version.app,
-  scalaVersion := Version.scala,
-  libraryDependencies ++= Dependencies.common,
-  scalacOptions ++= Seq(
-    "-feature",
-    "-language:postfixOps",
-    "-language:implicitConversions",
-    "-Xfatal-warnings",
-    "-unchecked"
-  )
-)
+scalaVersion := Version.scala
 
-lazy val rest = (project in file ("rest"))
-  .settings(name := "rest")
-  .settings(commonSettings: _*)
-  .settings(
-      libraryDependencies ++= Dependencies.rest
-  )
-
-lazy val parser = (project in file("parser"))
-  .settings(name := "parser")
-  .settings(commonSettings: _*)
-  .dependsOn(rest)
-
-lazy val play = (project in file("play"))
-  .settings(name := "play")
-  .settings(commonSettings: _*)
-  .enablePlugins(PlayScala)
-  .settings(libraryDependencies ++= Dependencies.web)
-  .settings(libraryDependencies +=  cache)
-  .dependsOn(parser)
+scalacOptions ++= Seq(
+  "-feature",
+  "-language:postfixOps",
+  "-language:implicitConversions",
+  "-Xfatal-warnings",
+  "-unchecked")
 
 lazy val root = (project in file("."))
-  .settings(run   in Compile <<= (run   in Compile) in play)
-  .settings(NativePackagerKeys.stage in Compile <<= (NativePackagerKeys.stage in Compile) in play)
+  .enablePlugins(PlayScala)
+  .settings(libraryDependencies ++= Dependencies.common)
