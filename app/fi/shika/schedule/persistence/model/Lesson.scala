@@ -6,7 +6,7 @@ import org.joda.time.DateTime
   * Representation of lesson in database
   */
 case class Lesson(
-  id       : Option[Long],
+  id       : Option[Long] = None,
   courseId : String,
   name     : String,
   start    : DateTime,

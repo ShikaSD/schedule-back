@@ -1,12 +1,20 @@
 package fi.shika.schedule.actors
 
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.Materializer
 import com.google.inject.{ImplementedBy, Inject, Singleton}
-import fi.shika.schedule.persistence.model.{Group, Room}
-import fi.shika.schedule.persistence.storage.{GroupStorage, RoomStorage}
+import fi.shika.schedule.persistence.model._
+import fi.shika.schedule.persistence.storage._
+import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.Logger
 
-import scala.concurrent.Future
+import scala.collection.immutable
+import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
 @ImplementedBy(classOf[ScheduleParserImpl])
@@ -15,13 +23,24 @@ trait ScheduleParser {
   def parseGroups: Future[Seq[Group]]
 
   def parseRooms: Future[Seq[Room]]
+
+  def parseLessons(group: Group)(implicit startDate: DateTime): Future[(Int, Int)]
 }
 
 @Singleton
 class ScheduleParserImpl @Inject()(
-  private val groupStorage: GroupStorage,
-  private val roomStorage: RoomStorage
+  private val groupStorage  : GroupStorage,
+  private val roomStorage   : RoomStorage,
+  private val lessonStorage : LessonStorage,
+  private val courseStorage : CourseStorage,
+  private val teacherStorage: TeacherStorage
+)(
+  implicit val ec: ExecutionContext,
+  implicit val system: ActorSystem,
+  implicit val materializer: Materializer
 ) extends ScheduleParser {
+
+  private val log = Logger(getClass)
 
   private val tilatDateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")
   private val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
@@ -87,112 +106,105 @@ class ScheduleParserImpl @Inject()(
 
     roomStorage.all()
   }
-/*
-  override def parseLessons(group: Group)(implicit startDate: DateTime) = {
+
+  def parseLessons(group: Group)(implicit startDate: DateTime) = {
     var deleted = 0
     var created = 0
 
-    formUrls(group.name, startDate) foreach {case (weekNum, url) =>
-      val parsed = parseWeek(url, group)
-      keys foreach {key =>
-        RestService initialize key
-
-        try {
-          val lessons = Lesson query QueryParam("group", group.name)
-            .add("start", Param(
-              greaterThanOrEqual = ParseDate(startDate plusWeeks weekNum - 1),
-              lessThan           = ParseDate(startDate plusWeeks weekNum)
-            ))
-
-          parsed.view.filter(s => !lessons.exists(_ equals s))
-            .map(_.create)
-            .foreach {lesson =>
-              addCourse(lesson)
-              addTeacher(lesson)
-              addRoom(lesson)
+    val parsedFutures = formUrls(group.name, startDate) map { case (weekNum, url) =>
+      val parsed = parseWeek(url, group).toList
+      lessonStorage.groupLessonsBetween(
+        group.name,
+        startDate plusWeeks weekNum - 1,
+        startDate plusWeeks weekNum
+      ).flatMap { lessons =>
+        val createdFutures = parsed.filter(s => !lessons.exists(_ equals s))
+          .map(
+            lessonStorage.create(_).flatMap { lesson =>
               created += 1
-            }
+              for {
+                course  <- addCourse(lesson)
+                teacher <- addTeacher (lesson)
+                room    <- addRoom (lesson)
+              } yield (course, teacher, room)
+            })
 
-          lessons.view.filter(s => !parsed.exists(_ equals s))
-            .foreach { g =>
-              g.delete
-              deleted += 1
-            }
+        val deletedFutures = lessons.filter(s => !parsed.exists(_ equals s))
+          .map { l =>
+            deleted += 1
+            lessonStorage.delete(l)
+          }
 
-        } catch {
-          case e: Exception => e.printStackTrace()
-        }
+        Future sequence createdFutures ++ deletedFutures
       }
-    }
+    } toList
 
-    (created, deleted)
+    Future.sequence(parsedFutures).map(result => (created, deleted))
   }
 
+
   private def addCourse(lesson: Lesson) = {
-    val courses = Course query QueryParam("courseId", lesson.courseId)
-    val newCourse = Course(
-      courseId = lesson.courseId,
-      name     = lesson.name,
-      teacher  = lesson.teacher,
-      group    = lesson.group,
-      start    = lesson.start,
-      end      = lesson.end
-    )
-    if(courses.isEmpty) {
-      //Create parent course
-      getCourse(lesson) match {
-        case Some(x) => x.create
-        case None    => println(s"No courses found in soleops with id ${lesson.courseId} and group ${lesson.group}")
-      }
-    }
+    courseStorage.byCourseId(lesson.courseId).map { courses =>
+      val newCourse = Course(
+        courseId = lesson.courseId,
+        name     = lesson.name,
+        teacher  = lesson.teacher,
+        group    = lesson.group,
+        start    = lesson.start,
+        end      = lesson.end)
 
-    if (!courses.exists(_ equals newCourse))
-      newCourse.create
-    else
-      courses.filter(_ equals newCourse)
-        .map { c =>
-          val start = if(c.start.get isAfter  newCourse.start.get) newCourse.start else c.start
-          val end   = if(c.end.get   isBefore newCourse.end.get)   newCourse.end   else c.end
-
-          c.copy(start = start, end = end).update
+      if (courses.isEmpty) {
+        //Create parent course
+        getCourse(lesson).map {
+          case Some(x) => courseStorage.create(x)
+          case _ => log.info(s"No courses found in soleops with id ${lesson.courseId} and group ${lesson.group}")
         }
+      }
+
+      if (!courses.exists(_ equals newCourse))
+        courseStorage.create(newCourse)
+      else
+        courses.filter(_ equals newCourse)
+          .map { c =>
+            val start = if (c.start isAfter newCourse.start) newCourse.start else c.start
+            val end   = if (c.end isBefore newCourse.end)    newCourse.end   else c.end
+
+            courseStorage.update(c.copy(start = start, end = end))
+          }
+    }
   }
 
   private def addTeacher(lesson: Lesson) = {
     val parsedTeachers = lesson.teacher.split(",")
       .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+      .toList
 
-    val teachers = Teacher query
-      QueryParam.or(
-        parsedTeachers.map(QueryParam("name", _))
-      )
-
-    parsedTeachers.filter(s => !teachers.exists(_.name == s))
-      .foreach(s => Teacher(name = s).create)
+    teacherStorage.byNames(parsedTeachers).flatMap(teachers =>
+      Future sequence parsedTeachers.filter(s => !teachers.exists(_.name == s))
+        .map(s => teacherStorage.create(Teacher(name = s)))
+    )
   }
 
   private def addRoom(lesson: Lesson) = {
     val parsedRooms = lesson.room.split(",")
       .map(_.replaceAll("\\s", ""))
+      .toList
 
-    val rooms = Room query
-      QueryParam.or(
-        parsedRooms.map(QueryParam("name", _))
-      )
-
-    parsedRooms.filter(s => !rooms.exists(_.name == s))
-      .foreach(s => Room(name = s).create)
+    roomStorage.byNames(parsedRooms).flatMap(rooms =>
+      Future sequence parsedRooms.filter(s => !rooms.exists(_.name == s))
+        .map(s => roomStorage.create(Room(name = s)))
+    )
   }
 
   private def parseWeek(url: String, group: Group) = {
-    val lessonPattern = "(onclick=.*?&pvm[\\s\\S]*?</td>)".r
-    val infoPattern = "<b>(.*)".r
-    val datePattern = "&pvm=(.*?)&".r
-    val roomPattern = "</b>(.*?)</font>".r
+    val lessonPattern  = "(onclick=.*?&pvm[\\s\\S]*?</td>)".r
+    val infoPattern    = "<b>(.*)".r
+    val datePattern    = "&pvm=(.*?)&".r
+    val roomPattern    = "</b>(.*?)</font>".r
     val teacherPattern = "</a>(.*)".r
-    val cidPattern = "([A-Z0-9]{4,} )".r
-    val junkPattern = "(^[\\s\"]+|[\\s,.]+$)".r
-    val extraPattern = "(<.*?>|\"|\\n)".r
+    val cidPattern     = "([A-Z0-9]{4,} )".r
+    val junkPattern    = "(^[\\s\"]+|[\\s,.]+$)".r
+    val extraPattern   = "(<.*?>|\"|\\n)".r
 
     val htmlParts = lessonPattern.findAllIn(getHtml(url)).matchData
       .map(_.group(1))
@@ -233,20 +245,21 @@ class ScheduleParserImpl @Inject()(
       //Create lesson
       Lesson(
         courseId = cid,
-        name = name,
-        start = ParseDate(start),
-        end = ParseDate(end),
-        group = group.name,
-        teacher = teacher,
-        room = room
+        name     = name,
+        start    = start,
+        end      = end,
+        group    = group.name,
+        teacher  = teacher,
+        room     = room
       )
     }
-  }*/
+  }
 
   private def getHtml(url: String) = {
     Source.fromURL(url).mkString
   }
-/*
+
+
   private def formUrls(name: String, start: DateTime): Array[(Int, String)] = {
     (0 to WeeksToParse) map { num =>
       (num + 1, start.plusWeeks(num))
@@ -270,9 +283,6 @@ class ScheduleParserImpl @Inject()(
   }
 
   private def getCourse(lesson: Lesson) = {
-    val httpClient = HttpClients.custom()
-      .setSSLContext(sslContext)
-      .build
 
     val coursePattern = (
       """<td width="1%"[\s\S]*?showmode">(.*?)</div>[\s\S]*?</td>[\s\S]*?""" +
@@ -283,34 +293,38 @@ class ScheduleParserImpl @Inject()(
         """<td[\s\S]*?</td>[\s\S]*?""" +
         """<td[\s\S]*?showmode">(.*?)</div>[\s\S]*?</td>""").r
 
-    try {
-      val request = new HttpPost(SoleOpsUrl)
-      val data = new UrlEncodedFormEntity(
-        Seq(
-          new BasicNameValuePair("ojtunnus", lesson.courseId),
-          new BasicNameValuePair("ryhma", lesson.group)
-        ).asJava
-      )
-      request.setEntity(data)
-      request.setHeader("Content-Type", "application/x-www-form-urlencoded")
-      request.setHeader("Accept", "text/html")
+    val data = FormData(
+      "ojtunnus" -> lesson.courseId,
+      "ryhma"    -> lesson.group
+    )
 
-      val body = httpClient.getResponse(request)
+    val headers = immutable.Seq(
+      Accept(MediaRange(MediaTypes.`text/html`))
+    )
 
+    val resultFuture = for {
+      response <- Http().singleRequest(
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = SoleOpsUrl,
+          entity = data.toEntity,
+          headers = headers))
+      result <- Unmarshal(response).to[String]
+    } yield result
+
+    resultFuture.map { body =>
       for (m <- coursePattern findFirstMatchIn body)
         yield {
-          val dates = (m group 3).split("-").map(s => ParseDate(soleOpsDateFormat.parseDateTime(s)))
+          val dates = (m group 3).split("-").map(soleOpsDateFormat.parseDateTime)
           Course(
             courseId = m group 1,
-            name = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),
-            start = dates(0),
-            end = dates(1),
-            group = m group 4,
-            parent = true
+            name     = m group 2 replaceAll("\\&auml;", "ä") replaceAll("\\&ouml;", "ö"),
+            start    = dates(0),
+            end      = dates(1),
+            group    = m group 4,
+            parent   = true
           )
         }
-    } finally {
-      httpClient.close()
     }
-  }*/
+  }
 }

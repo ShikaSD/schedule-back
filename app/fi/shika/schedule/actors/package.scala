@@ -31,7 +31,7 @@ package object actors {
 
   //Addresses for schedule parser
   val ScheduleUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
-  val SoleOpsUrl  = "https://soleops.mamk.fi/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
+  val SoleOpsUrl  = "http://soleops.mamk.fi/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
 
   val GroupUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=lk&guest=%2Fmamk&lang=eng"
   val RoomUrls = Array(

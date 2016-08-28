@@ -9,7 +9,7 @@ object Version {
   lazy val postgresDriver       = "9.4.1209.jre7"
   lazy val jodaMapper           = "2.2.0"
 
-  lazy val akka                 = "2.4.9-RC1"
+  lazy val akka                 = "2.4.9"
   lazy val json4s               = "3.3.0.RC6"
   lazy val time                 = "2.12.0"
 }
@@ -36,5 +36,5 @@ object Dependencies {
 
   val akka = Seq(akkaHttp, akkaSlf4j)
 
-  val common = Seq(time, jdbc) ++ akka ++ slick
+  val common = Seq(time, jdbc) ++ akka ++ slick .map( _.exclude("com.zaxxer", "HikariCP-java6"))
 }

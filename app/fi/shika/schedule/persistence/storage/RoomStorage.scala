@@ -15,6 +15,8 @@ trait RoomStorage {
 
   def all(): Future[Seq[Room]]
 
+  def byNames(names: Seq[String]): Future[Seq[Room]]
+
   def create(room: Room): Future[Room]
 
   def delete(room: Room): Future[Int]
@@ -29,6 +31,8 @@ class RoomStorageImpl @Inject()(protected val configProvider: DatabaseConfigProv
   import driver.api._
 
   def all() = db.run(rooms.result)
+
+  def byNames(names: Seq[String]) = db.run(rooms.filter(_.name.inSet(names)).result)
 
   def create(room: Room) = db.run((rooms returning rooms) += room)
 
