@@ -124,8 +124,8 @@ class ScheduleParserImpl @Inject()(
               created += 1
               for {
                 course  <- addCourse(lesson)
-                teacher <- addTeacher (lesson)
-                room    <- addRoom (lesson)
+                teacher <- addTeacher(lesson)
+                room    <- addRoom(lesson)
               } yield (course, teacher, room)
             })
 
@@ -135,11 +135,14 @@ class ScheduleParserImpl @Inject()(
             lessonStorage.delete(l)
           }
 
-        Future sequence createdFutures ++ deletedFutures
+        (createdFutures ++ deletedFutures).reduce[Future[Any]] {
+          case (memo: Future[Any], future: Future[Any]) => memo.flatMap(s => future)
+        }
       }
     } toList
 
-    Future.sequence(parsedFutures).map(result => (created, deleted))
+    parsedFutures.reduce[Future[Any]] { case (memo, future) => memo.flatMap(s => future) }
+      .map(result => (created, deleted))
   }
 
 
@@ -177,6 +180,8 @@ class ScheduleParserImpl @Inject()(
   private def addTeacher(lesson: Lesson) = {
     val parsedTeachers = lesson.teacher.split(",")
       .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+      .filter(!_.isEmpty)
+      .distinct
       .toList
 
     teacherStorage.byNames(parsedTeachers).flatMap(teachers =>
@@ -188,6 +193,8 @@ class ScheduleParserImpl @Inject()(
   private def addRoom(lesson: Lesson) = {
     val parsedRooms = lesson.room.split(",")
       .map(_.replaceAll("\\s", ""))
+      .filter(!_.isEmpty)
+      .distinct
       .toList
 
     roomStorage.byNames(parsedRooms).flatMap(rooms =>

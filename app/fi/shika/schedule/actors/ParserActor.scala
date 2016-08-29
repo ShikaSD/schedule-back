@@ -25,8 +25,9 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
     //Parsing in parallel threads
     val schedule = Future {
       log.info("Parsing groups and lessons...")
-      scheduleParser.parseGroups map { groups =>
-        groups.map { g =>
+    } flatMap { base =>
+      scheduleParser.parseGroups flatMap { groups =>
+        Future sequence groups.map { g =>
           val future = scheduleParser.parseLessons(g)
           future.onSuccess { case (added: Int, deleted: Int) =>
             log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
@@ -35,7 +36,6 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
           future
         }
       }
-      log.info("Groups and lessons parsed")
     }
     /*val changes = Future {
       log.info("Parsing changes...")
@@ -47,11 +47,9 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
       studentParser.parseEvents
       log.info("Events parsed")
     }*/
-    val rooms = Future {
-      log.info("Parsing rooms...")
-      scheduleParser.parseRooms
-      log.info("Rooms parsed")
-    }
+    val rooms = Future(log.info("Parsing rooms..."))
+      .flatMap(s => scheduleParser.parseRooms)
+      .map(s => log.info("Rooms parsed"))
 
     val future = for {
       s <- schedule
