@@ -21,7 +21,11 @@ trait LessonStorage {
 
   def create(lesson: Lesson): Future[Lesson]
 
+  def createAll(items: Seq[Lesson]): Future[Seq[Lesson]]
+
   def delete(lesson: Lesson): Future[Int]
+
+  def deleteAll(items: Seq[Lesson]): Future[Int]
 }
 
 @Singleton
@@ -43,5 +47,13 @@ class LessonStorageImpl @Inject()(protected val configProvider: DatabaseConfigPr
 
   def create(lesson: Lesson) = db.run((lessons returning lessons) += lesson)
 
+  def createAll(items: Seq[Lesson]) = db.run((lessons returning lessons) ++= items)
+
   def delete(lesson: Lesson) = db.run(lessons.filter(_.id === lesson.id).delete)
+
+  def deleteAll(items: Seq[Lesson]) = db.run(
+    lessons.filter(
+      _.id.inSet(items.map(_.id.getOrElse(-1L)))
+    ).delete
+  )
 }

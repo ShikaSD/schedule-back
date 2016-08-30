@@ -39,6 +39,6 @@ class App @Inject() (checker: DatabaseChecker)(
       result <- Unmarshal(response).to[String]
     } yield result
 
-    content map { Ok(_) }
+    content map { s => Ok("Done") }
   }
 }

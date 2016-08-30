@@ -9,7 +9,7 @@ case class Course(
   id       : Option[Long] = None,
   courseId : String,
   name     : String,
-  teacher  : String = "",
+  teachers  : Seq[String] = Nil,
   group    : String,
   start    : DateTime,
   end      : DateTime,
@@ -19,7 +19,7 @@ case class Course(
     case c: Course =>
       this.courseId == c.courseId &&
       this.name     == c.name     &&
-      this.teacher  == c.teacher  &&
+      this.teachers  == c.teachers  &&
       this.group    == c.group    &&
       this.start    == c.start    &&
       this.end      == c.end      &&

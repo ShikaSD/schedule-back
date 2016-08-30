@@ -27,13 +27,15 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
       log.info("Parsing groups and lessons...")
     } flatMap { base =>
       scheduleParser.parseGroups flatMap { groups =>
-        Future sequence groups.map { g =>
-          val future = scheduleParser.parseLessons(g)
-          future.onSuccess { case (added: Int, deleted: Int) =>
+        groups.map { g =>
+          val resultFuture = scheduleParser.parseLessons(g)
+          resultFuture.onSuccess { case (added: Int, deleted: Int) =>
             log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
           }
 
-          future
+          resultFuture
+        } reduce[Future[(Int, Int)]] { case (memo, it) =>
+            memo.flatMap(s => it)
         }
       }
     }
@@ -51,12 +53,12 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
       .flatMap(s => scheduleParser.parseRooms)
       .map(s => log.info("Rooms parsed"))
 
-    val future = for {
+    val parsing = for {
       s <- schedule
       r <- rooms
     } yield (s, r)
 
-    future.onComplete(s => log.info("End of parsing"))
+    parsing.onComplete(s => log.info("End of parsing"))
   }
 
   override def receive = {

@@ -18,6 +18,8 @@ trait TeacherStorage {
   def byNames(names: Seq[String]): Future[Seq[Teacher]]
 
   def create(teacher: Teacher): Future[Teacher]
+
+  def createAll(items: Seq[Teacher]): Future[Seq[Teacher]]
 }
 
 @Singleton
@@ -33,4 +35,6 @@ class TeacherStorageImpl @Inject()(protected val configProvider: DatabaseConfigP
   def byNames(names: Seq[String]) = db.run(teachers.filter(_.name.inSet(names)).result)
 
   def create(teacher: Teacher) = db.run(teachers returning teachers += teacher)
+
+  def createAll(items: Seq[Teacher]) = db.run(teachers returning teachers ++= items)
 }

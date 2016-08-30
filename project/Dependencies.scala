@@ -6,6 +6,7 @@ object Version {
   lazy val app                  = "0.1"
 
   lazy val playSlick            = "2.0.0"
+  lazy val slickExtensions      = "3.0.0"
   lazy val postgresDriver       = "9.4.1209.jre7"
   lazy val jodaMapper           = "2.2.0"
 
@@ -24,6 +25,7 @@ object Libraries {
   lazy val akkaSlf4j            = "com.typesafe.akka"              %% "akka-slf4j"             % Version.akka
 
   lazy val playSlick            = "com.typesafe.play"              %% "play-slick"             % Version.playSlick
+  lazy val slickExtensions      = "com.typesafe.slick"             %% "slick-extensions"       % Version.slickExtensions
   lazy val jodaMapper           = "com.github.tototoshi"           %% "slick-joda-mapper"      % Version.jodaMapper
   lazy val postgresDriver       = "org.postgresql"                 %  "postgresql"             % Version.postgresDriver
 
@@ -32,9 +34,9 @@ object Libraries {
 object Dependencies {
   import Libraries._
 
-  val slick = Seq(playSlick, postgresDriver, jodaMapper)
+  val slick = Seq(playSlick, postgresDriver, jodaMapper, slickExtensions)
 
   val akka = Seq(akkaHttp, akkaSlf4j)
 
-  val common = Seq(time, jdbc) ++ akka ++ slick .map( _.exclude("com.zaxxer", "HikariCP-java6"))
+  val common = (Seq(time, jdbc) ++ akka ++ slick).map( _.exclude("com.zaxxer", "HikariCP-java6"))
 }

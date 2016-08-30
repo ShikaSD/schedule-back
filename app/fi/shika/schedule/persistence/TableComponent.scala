@@ -38,13 +38,13 @@ trait TableComponent { self: SlickProfile =>
   protected class CourseTable(tag: Tag) extends BaseTable[Course](tag, "course") {
     def courseId = column[String]("courseId")
     def name     = column[String]("name")
-    def teacher  = column[String]("teacher")
+    def teachers = column[Seq[String]]("teachers")
     def group    = column[String]("group")
     def start    = column[DateTime]("start")
     def end      = column[DateTime]("end")
     def parent   = column[Boolean]("parent")
 
-    def * = (id, courseId, name, teacher, group, start, end, parent) <> (Course.tupled, Course.unapply)
+    def * = (id, courseId, name, teachers, group, start, end, parent) <> (Course.tupled, Course.unapply)
   }
 
   protected class LessonTable(tag: Tag) extends BaseTable[Lesson](tag, "lesson") {
@@ -53,10 +53,10 @@ trait TableComponent { self: SlickProfile =>
     def start    = column[DateTime]("start")
     def end      = column[DateTime]("end")
     def group    = column[String]("group")
-    def teacher  = column[String]("teacher")
-    def room     = column[String]("room")
+    def teachers = column[Seq[String]]("teachers")
+    def rooms    = column[Seq[String]]("rooms")
 
-    def * = (id, courseId, name, start, end, group, teacher, room) <> (Lesson.tupled, Lesson.unapply)
+    def * = (id, courseId, name, start, end, group, teachers, rooms) <> (Lesson.tupled, Lesson.unapply)
   }
 
   protected class EventTable(tag: Tag) extends BaseTable[Event](tag, "event") {
@@ -76,4 +76,9 @@ trait TableComponent { self: SlickProfile =>
   protected val courses  = TableQuery[CourseTable]
   protected val lessons  = TableQuery[LessonTable]
   protected val events   = TableQuery[EventTable]
+
+  implicit val stringListMapper = MappedColumnType.base[Seq[String],String](
+    list => list.mkString(","),
+    string => string.split(',').toList
+  )
 }

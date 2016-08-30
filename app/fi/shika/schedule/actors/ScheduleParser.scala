@@ -118,26 +118,25 @@ class ScheduleParserImpl @Inject()(
         startDate plusWeeks weekNum - 1,
         startDate plusWeeks weekNum
       ).flatMap { lessons =>
-        val createdFutures = parsed.filter(s => !lessons.exists(_ equals s))
-          .map(
-            lessonStorage.create(_).flatMap { lesson =>
-              created += 1
-              for {
-                course  <- addCourse(lesson)
-                teacher <- addTeacher(lesson)
-                room    <- addRoom(lesson)
-              } yield (course, teacher, room)
-            })
+        val lessonsToCreate = parsed.filter(l => !lessons.exists(_ equals l))
+        val lessonsToDelete = lessons.filter(l => !parsed.exists(_ equals l))
 
-        val deletedFutures = lessons.filter(s => !parsed.exists(_ equals s))
-          .map { l =>
-            deleted += 1
-            lessonStorage.delete(l)
-          }
+        val teachersToCreate = lessonsToCreate.flatMap(_.teachers).distinct
+        val roomsToCreate    = lessonsToCreate.flatMap(_.rooms).distinct
 
-        (createdFutures ++ deletedFutures).reduce[Future[Any]] {
-          case (memo: Future[Any], future: Future[Any]) => memo.flatMap(s => future)
-        }
+        val createdFuture = lessonStorage.createAll(lessonsToCreate)
+          .map(f => created += lessonsToCreate.length)
+
+        val deletedFuture = lessonStorage.deleteAll(lessonsToDelete)
+          .map(f => deleted += lessonsToDelete.length)
+
+        for {
+          lessons  <- createdFuture
+          deleted  <- deletedFuture
+          teachers <- addTeachers(teachersToCreate)
+          rooms    <- addRooms(roomsToCreate)
+          course   <- Future sequence lessonsToCreate.map(addCourse)
+        } yield Unit
       }
     } toList
 
@@ -151,7 +150,7 @@ class ScheduleParserImpl @Inject()(
       val newCourse = Course(
         courseId = lesson.courseId,
         name     = lesson.name,
-        teacher  = lesson.teacher,
+        teachers = lesson.teachers,
         group    = lesson.group,
         start    = lesson.start,
         end      = lesson.end)
@@ -169,37 +168,29 @@ class ScheduleParserImpl @Inject()(
       else
         courses.filter(_ equals newCourse)
           .map { c =>
-            val start = if (c.start isAfter newCourse.start) newCourse.start else c.start
-            val end   = if (c.end isBefore newCourse.end)    newCourse.end   else c.end
+            val start = if (c.start isAfter  newCourse.start) newCourse.start else c.start
+            val end   = if (c.end   isBefore newCourse.end)   newCourse.end   else c.end
 
             courseStorage.update(c.copy(start = start, end = end))
           }
     }
   }
 
-  private def addTeacher(lesson: Lesson) = {
-    val parsedTeachers = lesson.teacher.split(",")
-      .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
-      .filter(!_.isEmpty)
-      .distinct
-      .toList
-
-    teacherStorage.byNames(parsedTeachers).flatMap(teachers =>
-      Future sequence parsedTeachers.filter(s => !teachers.exists(_.name == s))
-        .map(s => teacherStorage.create(Teacher(name = s)))
-    )
+  private def addTeachers(teacherNames: Seq[String]) = {
+    teacherStorage.byNames(teacherNames).flatMap { teachers =>
+      teacherStorage.createAll(
+        teacherNames.filter(name => !teachers.exists(_.name == name))
+          .map(name => Teacher(name = name))
+      )
+    }
   }
 
-  private def addRoom(lesson: Lesson) = {
-    val parsedRooms = lesson.room.split(",")
-      .map(_.replaceAll("\\s", ""))
-      .filter(!_.isEmpty)
-      .distinct
-      .toList
-
-    roomStorage.byNames(parsedRooms).flatMap(rooms =>
-      Future sequence parsedRooms.filter(s => !rooms.exists(_.name == s))
-        .map(s => roomStorage.create(Room(name = s)))
+  private def addRooms(roomNames: Seq[String]) = {
+    roomStorage.byNames(roomNames).flatMap(rooms =>
+      roomStorage.createAll(
+        roomNames.filter(s => !rooms.exists(_.name == s))
+          .map(s => Room(name = s))
+      )
     )
   }
 
@@ -241,13 +232,23 @@ class ScheduleParserImpl @Inject()(
         .replaceAll(junkPattern.regex, "")
 
       //Room and teachers
-      val room = part.search(roomPattern).get
+      val rooms = part.search(roomPattern).getOrElse("")
         .replaceAll(extraPattern.regex, "")
         .replaceAll(junkPattern.regex, "")
+        .split(",")
+        .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+        .filter(!_.isEmpty)
+        .distinct
+        .toList
 
-      val teacher = part.search(teacherPattern).get
+      val teachers = part.search(teacherPattern).getOrElse("")
         .replaceAll(extraPattern.regex, "")
         .replaceAll(junkPattern.regex, "")
+        .split(",")
+        .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+        .filter(!_.isEmpty)
+        .distinct
+        .toList
 
       //Create lesson
       Lesson(
@@ -256,8 +257,8 @@ class ScheduleParserImpl @Inject()(
         start    = start,
         end      = end,
         group    = group.name,
-        teacher  = teacher,
-        room     = room
+        teachers  = teachers,
+        rooms     = rooms
       )
     }
   }
