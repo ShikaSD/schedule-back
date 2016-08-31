@@ -17,7 +17,11 @@ trait GroupStorage {
 
   def create(group: Group): Future[Group]
 
+  def createAll(items: Seq[Group]): Future[Seq[Group]]
+
   def delete(group: Group): Future[Int]
+
+  def deleteAll(items: Seq[Group]): Future[Int]
 }
 
 @Singleton
@@ -32,5 +36,9 @@ class GroupStorageImpl @Inject()(protected val configProvider: DatabaseConfigPro
 
   def create(group: Group) = db.run((groups returning groups) += group)
 
+  def createAll(items: Seq[Group]) = db.run(groups returning groups ++= items)
+
   def delete(group: Group) = db.run(groups.filter(_.id === group.id).delete)
+
+  def deleteAll(items: Seq[Group]) = db.run(groups.filter(_.name.inSet(items.map(_.name))).delete)
 }

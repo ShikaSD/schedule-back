@@ -7,6 +7,7 @@ import org.joda.time.{DateTime, DateTimeConstants}
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object ParserActor {
 
@@ -27,10 +28,14 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
       log.info("Parsing groups and lessons...")
     } flatMap { base =>
       scheduleParser.parseGroups flatMap { groups =>
+        log.info(s"Parsing lessons for ${groups.length} groups")
         groups.map { g =>
           val resultFuture = scheduleParser.parseLessons(g)
-          resultFuture.onSuccess { case (added: Int, deleted: Int) =>
-            log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
+          resultFuture.andThen {
+            case Success((added, deleted)) =>
+              log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
+            case Failure(e) =>
+              log.error(s"Failed to parse lessons for group $g with exception: " , e)
           }
 
           resultFuture
@@ -39,19 +44,13 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
         }
       }
     }
-    /*val changes = Future {
-      log.info("Parsing changes...")
-      studentParser.parseChanges
-      log.info("Changes parsed")
-    }
-    val events  = Future {
-      log.info("Parsing events...")
-      studentParser.parseEvents
-      log.info("Events parsed")
-    }*/
+
     val rooms = Future(log.info("Parsing rooms..."))
       .flatMap(s => scheduleParser.parseRooms)
       .map(s => log.info("Rooms parsed"))
+
+    schedule.onFailure { case e: Throwable => log.error("Schedule parsing failed with exception: ", e) }
+    rooms.onFailure { case e: Throwable => log.error("Room parsing failed with exception: ", e) }
 
     val parsing = for {
       s <- schedule
@@ -62,7 +61,6 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
   }
 
   override def receive = {
-    case Parse(x: DateTime) =>
-      parse(x)
+    case Parse(x: DateTime) => parse(x)
   }
 }

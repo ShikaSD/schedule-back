@@ -56,19 +56,15 @@ class ScheduleParserImpl @Inject()(
       .drop(1)
 
     groupStorage.all()
-      .map { groups =>
-        parsedNames.filter(s => !groups.exists(_.name == s))
+      .flatMap { groups =>
+        val toCreate = parsedNames.filter(s => !groups.exists(_.name == s))
           .map(s => Group(name = s))
-          .foreach(groupStorage.create)
 
-        groups
-      }.foreach(
-        //Delete removed names
-        _.filter(s => !parsedNames.contains(s.name))
-          .foreach(groupStorage.delete)
-      )
+        val toDelete = groups.filter(s => !parsedNames.contains(s.name))
 
-    groupStorage.all()
+        groupStorage.createAll(toCreate)
+          .flatMap(f => groupStorage.deleteAll(toDelete))
+      }.flatMap(s => groupStorage.all())
   }
 
   def parseRooms = {
