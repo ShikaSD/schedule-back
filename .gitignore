@@ -15,3 +15,4 @@ dist
 /.settings
 hk-debug
 application.conf
+prod.conf
