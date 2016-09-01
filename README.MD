@@ -1,4 +1,4 @@
-Schedule parser project
+Schedule backend (parser + rest api) project
 ====================
 
 # Build
