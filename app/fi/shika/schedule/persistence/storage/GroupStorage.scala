@@ -13,14 +13,24 @@ import scala.concurrent.Future
 @ImplementedBy(classOf[GroupStorageImpl])
 trait GroupStorage {
 
+  /**
+    * Retrieves all groups from the database sorted by name
+    * @return Future with retrieved Seq[Group]
+    */
   def all(): Future[Seq[Group]]
 
-  def create(group: Group): Future[Group]
-
+  /**
+    * Creates all items in the database
+    * @param items to create
+    * @return Future with created items
+    */
   def createAll(items: Seq[Group]): Future[Seq[Group]]
 
-  def delete(group: Group): Future[Int]
-
+  /**
+    * Deletes items in the database
+    * @param items to delete
+    * @return Future with amount of removed items
+    */
   def deleteAll(items: Seq[Group]): Future[Int]
 }
 
@@ -32,13 +42,9 @@ class GroupStorageImpl @Inject()(protected val configProvider: DatabaseConfigPro
 
   import driver.api._
 
-  def all() = db.run(groups.result)
-
-  def create(group: Group) = db.run((groups returning groups) += group)
+  def all() = db.run(groups.sortBy(_.name).result)
 
   def createAll(items: Seq[Group]) = db.run(groups returning groups ++= items)
-
-  def delete(group: Group) = db.run(groups.filter(_.id === group.id).delete)
 
   def deleteAll(items: Seq[Group]) = db.run(groups.filter(_.name.inSet(items.map(_.name))).delete)
 }

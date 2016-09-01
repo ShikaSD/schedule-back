@@ -3,6 +3,7 @@ package fi.shika.schedule.actors
 import akka.actor.Actor
 import com.google.inject.Inject
 import fi.shika.schedule.actors.ParserActor.Parse
+import fi.shika.schedule.parser.ScheduleParser
 import org.joda.time.{DateTime, DateTimeConstants}
 import play.api.Logger
 

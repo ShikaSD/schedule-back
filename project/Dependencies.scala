@@ -10,14 +10,11 @@ object Version {
   lazy val jodaMapper           = "2.2.0"
 
   lazy val akka                 = "2.4.9"
-  lazy val json4s               = "3.3.0.RC6"
   lazy val time                 = "2.12.0"
 }
 
 object Libraries {
 
-  lazy val json4s               = "org.json4s"                     %% "json4s-native"          % Version.json4s
-  lazy val json4sExt            = "org.json4s"                     %% "json4s-ext"             % Version.json4s
   lazy val time                 = "com.github.nscala-time"         %% "nscala-time"            % Version.time
 
   lazy val akkaHttp             = "com.typesafe.akka"              %% "akka-http-experimental" % Version.akka

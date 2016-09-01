@@ -7,6 +7,7 @@ import akka.stream.Materializer
 import fi.shika.schedule.persistence.storage.GroupStorage
 import fi.shika.schedule.startup.DatabaseChecker
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.json.Json
 import play.api.mvc._
 
 class App @Inject() (
@@ -19,7 +20,7 @@ class App @Inject() (
 
   def index = Action.async { implicit request =>
     groupStorage.all() map { groups =>
-      Ok(groups + "")
+      Ok(Json.toJson(groups))
     }
   }
 }

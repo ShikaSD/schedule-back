@@ -1,4 +1,4 @@
-package fi.shika.schedule.actors.parser.model
+package fi.shika.schedule.parser.model
 
 //It is a copy of deserialized C# class
 //Don't rename the fields

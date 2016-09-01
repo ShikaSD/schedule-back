@@ -9,7 +9,7 @@ case class Course(
   id       : Option[Long] = None,
   courseId : String,
   name     : String,
-  teachers  : Seq[String] = Nil,
+  teachers : Seq[String] = Nil,
   group    : String,
   start    : DateTime,
   end      : DateTime,

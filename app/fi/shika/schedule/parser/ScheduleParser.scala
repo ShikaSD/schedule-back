@@ -1,4 +1,4 @@
-package fi.shika.schedule.actors
+package fi.shika.schedule.parser
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http

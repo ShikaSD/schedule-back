@@ -7,13 +7,9 @@ import org.joda.time.DateTimeZone
 import scala.io.Codec
 import scala.util.matching.Regex
 
-package object actors {
+package object parser {
   //Set default timezone 
   DateTimeZone.setDefault(DateTimeZone.forID("Europe/Helsinki"))
-  
-  //Dont use this for other purposes (for any you can), please
-  val Login    = "oansh006"
-  val Password = "t43aZHLn"
 
   //Addresses for student parser
   val TokenUrl    = "https://student.xamk.fi/_api/contextinfo"
