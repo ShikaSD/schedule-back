@@ -78,7 +78,7 @@ trait TableComponent { self: SlickProfile =>
   protected val events   = TableQuery[EventTable]
 
   implicit val stringListMapper = MappedColumnType.base[Seq[String],String](
-    list => list.mkString(","),
-    string => string.split(',').toList
+    list   => list.mkString(","),
+    string => string.split(',').toList.filter(_.nonEmpty)
   )
 }

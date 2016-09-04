@@ -15,7 +15,7 @@ case class Course(
   end      : DateTime,
   parent   : Boolean = false) {
 
-  override def equals(obj: Any) = obj match {
+  def sameAs(obj: Any) = obj match {
     case c: Course =>
       this.courseId == c.courseId &&
       this.name     == c.name     &&

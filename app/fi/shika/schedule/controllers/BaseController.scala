@@ -14,7 +14,7 @@ class BaseController(env: Environment) extends Controller {
     if(header.isEmpty && env.isProd) {
       Future.successful(Forbidden("Wrong token."))
     } else {
-      implicit val id = header.get
+      implicit val id = header.getOrElse("")
       action(request)
     }
   }

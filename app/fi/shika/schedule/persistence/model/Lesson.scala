@@ -12,10 +12,10 @@ case class Lesson(
   start    : DateTime,
   end      : DateTime,
   group    : String,
-  teachers  : Seq[String],
-  rooms     : Seq[String]) {
+  teachers : Seq[String],
+  rooms    : Seq[String]) {
 
-  override def equals(obj: Any) = obj match {
+  def sameAs(obj: Any) = obj match {
     case l: Lesson =>
       l.courseId == this.courseId &&
       l.name     == this.name     &&

@@ -42,7 +42,7 @@ class ScheduleParserImpl @Inject()(
 
   private val log = Logger(getClass)
 
-  private val tilatDateFormat = DateTimeFormat.forPattern("yyMMddHH:mm")
+  private val tilatDateFormat   = DateTimeFormat.forPattern("yyMMddHH:mm")
   private val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
 
   def parseGroups = {
@@ -75,7 +75,7 @@ class ScheduleParserImpl @Inject()(
       .map(_.group(1))
       .toSeq.view
       .filter(!_.contains("Valitse"))
-      .map {s =>
+      .map { s =>
         val restored = s.replaceAll("\\&auml;", "ä").replaceAll("\\&ouml;", "ö")
         val spacePos = restored.indexOf(" ")
         val room = Room(
@@ -91,12 +91,12 @@ class ScheduleParserImpl @Inject()(
 
     roomStorage.all()
         .map { rooms =>
-          parsed.filter(s => !rooms.exists(_ equals s))
+          parsed.filter(s => !rooms.exists(_ sameAs s))
             .foreach(roomStorage.create)
 
           rooms
         }.foreach(
-          _.filter(s => !parsed.exists(_ equals s))
+          _.filter(s => !parsed.exists(_ sameAs s))
             .foreach(roomStorage.delete)
         )
 
@@ -108,14 +108,15 @@ class ScheduleParserImpl @Inject()(
     var created = 0
 
     val parsedFutures = formUrls(group.name, startDate) map { case (weekNum, url) =>
-      val parsed = parseWeek(url, group).toList
       lessonStorage.groupLessonsBetween(
         group.name,
         startDate plusWeeks weekNum - 1,
         startDate plusWeeks weekNum
       ).flatMap { lessons =>
-        val lessonsToCreate = parsed.filter(l => !lessons.exists(_ equals l))
-        val lessonsToDelete = lessons.filter(l => !parsed.exists(_ equals l))
+        val parsed = parseWeek(url, group).toList
+
+        val lessonsToCreate = parsed.filter(l => !lessons.exists(_ sameAs l))
+        val lessonsToDelete = lessons.filter(l => !parsed.exists(_ sameAs l))
 
         val teachersToCreate = lessonsToCreate.flatMap(_.teachers).distinct
         val roomsToCreate    = lessonsToCreate.flatMap(_.rooms).distinct
@@ -159,16 +160,17 @@ class ScheduleParserImpl @Inject()(
         }
       }
 
-      if (!courses.exists(_ equals newCourse))
+      if (!courses.exists(_ sameAs newCourse)) {
         courseStorage.create(newCourse)
-      else
-        courses.filter(_ equals newCourse)
+      } else {
+        courses.filter(_ sameAs newCourse)
           .map { c =>
-            val start = if (c.start isAfter  newCourse.start) newCourse.start else c.start
-            val end   = if (c.end   isBefore newCourse.end)   newCourse.end   else c.end
+            val start = if (c.start isAfter newCourse.start) newCourse.start else c.start
+            val end = if (c.end isBefore newCourse.end) newCourse.end else c.end
 
             courseStorage.update(c.copy(start = start, end = end))
           }
+      }
     }
   }
 
