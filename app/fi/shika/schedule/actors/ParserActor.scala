@@ -1,12 +1,14 @@
 package fi.shika.schedule.actors
 
 import akka.actor.Actor
+import akka.pattern.after
 import com.google.inject.Inject
 import fi.shika.schedule.actors.ParserActor.Parse
 import fi.shika.schedule.parser.ScheduleParser
 import org.joda.time.{DateTime, DateTimeConstants}
 import play.api.Logger
 
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -15,9 +17,12 @@ object ParserActor {
   case class Parse(date: DateTime = DateTime.now)
 }
 
-class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit ec: ExecutionContext) extends Actor {
+class ParserActor @Inject()(
+  private val scheduleParser: ScheduleParser
+)(implicit ec: ExecutionContext) extends Actor {
 
   private lazy val log = Logger(getClass.getName)
+  private val DebounceValue = 20.seconds
 
   private def parse(start: DateTime) = {
     implicit val startDate = start
@@ -33,16 +38,16 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
     } flatMap { base =>
       scheduleParser.parseGroups flatMap { groups =>
         log.info(s"Parsing lessons for ${groups.length} groups")
-        groups.map { g =>
-          val resultFuture = scheduleParser.parseLessons(g)
-          resultFuture.andThen {
-            case Success((added, deleted)) =>
-              log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
-            case Failure(e) =>
-              log.error(s"Failed to parse lessons for group $g with exception: " , e)
+        groups.zipWithIndex.map { case (g, i) =>
+          log.info(s"Delaying parser start of group ${g.name} to ${DebounceValue * i}")
+          after(DebounceValue * i, context.system.scheduler) {
+            scheduleParser.parseLessons(g).andThen {
+              case Success((added, deleted)) =>
+                log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
+              case Failure(e) =>
+                log.error(s"Failed to parse lessons for group $g with exception: ", e)
+            }
           }
-
-          resultFuture
         } reduce[Future[(Int, Int)]] { case (memo, it) =>
             memo.flatMap(s => it)
         }

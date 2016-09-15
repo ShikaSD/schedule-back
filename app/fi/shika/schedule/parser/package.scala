@@ -26,7 +26,8 @@ package object parser {
   )*/
 
   //Addresses for schedule parser
-  val ScheduleUrl = "http://tilat.mikkeliamk.fi/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
+  val ScheduleUrl = "tilat.mikkeliamk.fi"
+  val SchedulePath = "/kalenterit2/index.php?tiedot=kaikki&av_v=1&guest=%2Fmamk&kt=lk&lang=fin&av="
   val SoleOpsUrl  = "soleops.mamk.fi"
   val SoleOpsPath = "/opsnet/disp/fi/ops_TotsuHaku/tab/fet/sea"
 

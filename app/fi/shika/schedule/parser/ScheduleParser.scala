@@ -5,8 +5,8 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.{Materializer, scaladsl}
-import akka.stream.scaladsl.Sink
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Sink, Source}
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import fi.shika.schedule.persistence.model._
 import fi.shika.schedule.persistence.storage._
@@ -15,8 +15,8 @@ import org.joda.time.format.DateTimeFormat
 import play.api.Logger
 
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.io.Source
 
 @ImplementedBy(classOf[ScheduleParserImpl])
 trait ScheduleParser {
@@ -41,6 +41,8 @@ class ScheduleParserImpl @Inject()(
   implicit val materializer: Materializer
 ) extends ScheduleParser {
 
+  private val TimeOut = 1.minute
+
   private lazy val log = Logger(getClass)
 
   private lazy val tilatDateFormat   = DateTimeFormat.forPattern("yyMMddHH:mm")
@@ -50,55 +52,58 @@ class ScheduleParserImpl @Inject()(
   def parseGroups = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
 
-    val html = getHtml(GroupUrl)
+    getScheduleHtml(GroupUrl).flatMap { html =>
 
-    val parsedNames = namePattern.findAllIn(html).matchData
-      .map(_.group(1))
-      .toSeq
-      .drop(1)
+      val parsedNames = namePattern.findAllIn(html).matchData
+        .map(_.group(1))
+        .toSeq
+        .drop(1)
 
-    groupStorage.all()
-      .flatMap { groups =>
-        val toCreate = parsedNames.filter(s => !groups.exists(_.name == s))
-          .map(s => Group(name = s))
+      groupStorage.all()
+        .flatMap { groups =>
+          val toCreate = parsedNames.filter(s => !groups.exists(_.name == s))
+            .map(s => Group(name = s))
 
-        val toDelete = groups.filter(s => !parsedNames.contains(s.name))
+          val toDelete = groups.filter(s => !parsedNames.contains(s.name))
 
-        groupStorage.createAll(toCreate)
-          .flatMap(f => groupStorage.deleteAll(toDelete))
-      }.flatMap(s => groupStorage.all())
+          groupStorage.createAll(toCreate)
+            .flatMap(f => groupStorage.deleteAll(toDelete))
+        }.flatMap(s => groupStorage.all())
+    }
   }
 
   def parseRooms = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
-    val html = RoomUrls.fold("")((html, s) => html + getHtml(s))
+    RoomUrls.map(getScheduleHtml).reduce[Future[String]] { case (memo, future) =>
+      memo flatMap (s => future map (s + _))
+    } flatMap { html =>
+      val parsed = namePattern.findAllIn(html).matchData
+        .map(_.group(1))
+        .toSeq
+        .filter(!_.contains("Valitse"))
+        .map { s =>
+          val restored = s.replaceAll("\\&auml;", "ä").replaceAll("\\&ouml;", "ö")
+          val spacePos = restored.indexOf(" ")
+          val room = Room(
+            name = restored.slice(0, spacePos),
+            description = restored.slice(spacePos + 1, restored.length)
+          )
 
-    val parsed = namePattern.findAllIn(html).matchData
-      .map(_.group(1))
-      .toSeq
-      .filter(!_.contains("Valitse"))
-      .map { s =>
-        val restored = s.replaceAll("\\&auml;", "ä").replaceAll("\\&ouml;", "ö")
-        val spacePos = restored.indexOf(" ")
-        val room = Room(
-          name = restored.slice(0, spacePos),
-          description = restored.slice(spacePos + 1, restored.length)
-        )
+          if (room.name == "")
+            Room(name = room.description, description = room.name)
+          else
+            room
+        }
 
-        if(room.name == "")
-          Room(name = room.description, description = room.name)
-        else
-          room
-      }
+      roomStorage.all()
+        .map { rooms =>
+          val toCreate = parsed.filter(s => !rooms.exists(_ sameAs s))
+          val toDelete = rooms.filter(s => !parsed.exists(_ sameAs s))
 
-    roomStorage.all()
-      .map { rooms =>
-        val toCreate = parsed.filter(s => !rooms.exists(_ sameAs s))
-        val toDelete = rooms.filter(s => !parsed.exists(_ sameAs s))
-
-        roomStorage.createAll(toCreate)
-          .flatMap(s => roomStorage.deleteAll(toDelete))
-      }.flatMap(s => roomStorage.all())
+          roomStorage.createAll(toCreate)
+            .flatMap(s => roomStorage.deleteAll(toDelete))
+        }.flatMap(s => roomStorage.all())
+    }
   }
 
   def parseLessons(group: Group)(implicit startDate: DateTime) = {
@@ -110,27 +115,29 @@ class ScheduleParserImpl @Inject()(
         group.name,
         startDate plusWeeks weekNum - 1,
         startDate plusWeeks weekNum
-      ).flatMap { lessons =>
-        val parsed = parseWeek(url, group).toList
+      ) .zip(parseWeek(url, group))
+        .flatMap { case (lessons, parsed) =>
 
-        val lessonsToCreate = parsed.filter(l => !lessons.exists(_ sameAs l))
-        val lessonsToDelete = lessons.filter(l => !parsed.exists(_ sameAs l))
+          log.info(s"Parsed lessons for group ${group.name} and startDate ${startDate plusWeeks weekNum - 1}")
 
-        val teachersToCreate = lessonsToCreate.flatMap(_.teachers).distinct
-        val roomsToCreate    = lessonsToCreate.flatMap(_.rooms).distinct
+          val lessonsToCreate = parsed.filter(l => !lessons.exists(_ sameAs l))
+          val lessonsToDelete = lessons.filter(l => !parsed.exists(_ sameAs l))
 
-        val createdFuture = lessonStorage.createAll(lessonsToCreate)
-          .map(f => created += lessonsToCreate.length)
+          val teachersToCreate = lessonsToCreate.flatMap(_.teachers).distinct
+          val roomsToCreate = lessonsToCreate.flatMap(_.rooms).distinct
 
-        val deletedFuture = lessonStorage.deleteAll(lessonsToDelete)
-          .map(f => deleted += lessonsToDelete.length)
+          val createdFuture = lessonStorage.createAll(lessonsToCreate)
+            .map(f => created += lessonsToCreate.length)
 
-        createdFuture
-          .flatMap(f => deletedFuture)
-          .flatMap(f => addTeachers(teachersToCreate))
-          .flatMap(f => addRooms(roomsToCreate))
-          .flatMap(f => Future sequence lessonsToCreate.map(addCourse))
-      }
+          val deletedFuture = lessonStorage.deleteAll(lessonsToDelete)
+            .map(f => deleted += lessonsToDelete.length)
+
+          createdFuture
+            .flatMap(f => deletedFuture)
+            .flatMap(f => addTeachers(teachersToCreate))
+            .flatMap(f => addRooms(roomsToCreate))
+            .flatMap(f => Future sequence lessonsToCreate.map(addCourse))
+        }
     } toList
 
     parsedFutures.reduce[Future[Any]] { case (memo, future) => memo.flatMap(s => future) }
@@ -210,67 +217,80 @@ class ScheduleParserImpl @Inject()(
     val junkPattern    = "(^[\\s\"]+|[\\s,.]+$)".r
     val extraPattern   = "(<.*?>|\"|\\n)".r
 
-    val htmlParts = lessonPattern.findAllIn(getHtml(url)).matchData
-      .map(_.group(1))
-      .toArray
+    getScheduleHtml(url).flatMap { html =>
+      Future sequence lessonPattern.findAllIn(html).matchData
+        .map(_.group(1))
+        .toSeq
+        .map { part: String =>
+          val splitParts = part.search(infoPattern).get
+            .split("<br/>")
+            .map(_.replaceAll(extraPattern.regex, ""))
 
-    htmlParts map {part: String =>
-      val splitParts = part.search(infoPattern).get
-        .split("<br/>")
-        .map(_.replaceAll(extraPattern.regex, ""))
+          //Date
+          val time = splitParts.head.split(" - ")
+          val date = part.search(datePattern).get
+          val start = tilatDateFormat.parseDateTime(date + time(0))
+          val end = tilatDateFormat.parseDateTime(date + time(1))
 
-      //Date
-      val time = splitParts.head.split(" - ")
-      val date = part.search(datePattern).get
-      val start = tilatDateFormat.parseDateTime(date + time(0))
-      val end = tilatDateFormat.parseDateTime(date + time(1))
+          //There can be nothing in array, so skip it
+          //if (splitParts.length < 2) return
 
-      //There can be nothing in array, so skip it
-      //if (splitParts.length < 2) return
+          //Name
+          var name = splitParts(1)
+            .replaceAll(extraPattern.regex, "")
 
-      //Name
-      var name = splitParts(1)
-        .replaceAll(extraPattern.regex, "")
-      val cid = getCourseId(part)
+          name = name
+            .replaceAll(cidPattern.regex, "")
+            .replaceAll(junkPattern.regex, "")
 
-      name = name
-        .replaceAll(cidPattern.regex, "")
-        .replaceAll(junkPattern.regex, "")
+          //Room and teachers
+          val rooms = part.search(roomPattern).getOrElse("")
+            .replaceAll(extraPattern.regex, "")
+            .replaceAll(junkPattern.regex, "")
+            .split(",")
+            .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+            .filter(!_.isEmpty)
+            .distinct
+            .toList
 
-      //Room and teachers
-      val rooms = part.search(roomPattern).getOrElse("")
-        .replaceAll(extraPattern.regex, "")
-        .replaceAll(junkPattern.regex, "")
-        .split(",")
-        .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
-        .filter(!_.isEmpty)
-        .distinct
-        .toList
+          val teachers = part.search(teacherPattern).getOrElse("")
+            .replaceAll(extraPattern.regex, "")
+            .replaceAll(junkPattern.regex, "")
+            .split(",")
+            .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
+            .filter(!_.isEmpty)
+            .distinct
+            .toList
 
-      val teachers = part.search(teacherPattern).getOrElse("")
-        .replaceAll(extraPattern.regex, "")
-        .replaceAll(junkPattern.regex, "")
-        .split(",")
-        .map(_.replaceAll("([\\s]+$|^[\\s]+)", ""))
-        .filter(!_.isEmpty)
-        .distinct
-        .toList
-
-      //Create lesson
-      Lesson(
-        courseId = cid,
-        name     = name,
-        start    = start,
-        end      = end,
-        group    = group.name,
-        teachers  = teachers,
-        rooms     = rooms
-      )
+          //Create lesson
+          getCourseId(part) map (cid =>
+            Lesson(
+              courseId = cid,
+              name     = name,
+              start    = start,
+              end      = end,
+              group    = group.name,
+              teachers = teachers,
+              rooms    = rooms))
+        }
     }
   }
 
-  private def getHtml(url: String) = {
-    Source.fromURL(url).mkString
+  private def getScheduleHtml(url: String) = {
+    val urlParts = url.split("\\?")
+    val uri = urlParts.head
+    val query = urlParts.tail.headOption.getOrElse("")
+
+    val headers = immutable.Seq(
+      Accept(MediaRange(MediaTypes.`text/html`))
+    )
+
+    for {
+      response <- Source.single(HttpRequest(uri = Uri(uri).withRawQueryString(query), headers = headers))
+        .via(Http().outgoingConnection(ScheduleUrl))
+        .runWith(Sink.head)
+      result   <- Unmarshal(response).to[String]
+    } yield result
   }
 
 
@@ -279,7 +299,7 @@ class ScheduleParserImpl @Inject()(
       (num + 1, start.plusWeeks(num))
     } map { tuple =>
       val dString = tuple._2.toString(DateTimeFormat.forPattern("yyMMdd"))
-      (tuple._1, ScheduleUrl + s"$dString$dString$dString&cluokka=$name")
+      (tuple._1, SchedulePath + s"$dString$dString$dString&cluokka=$name")
     } toArray
   }
 
@@ -287,13 +307,14 @@ class ScheduleParserImpl @Inject()(
     val addressPattern = "\\.\\.(.*?)\'".r
     val namePattern = "<th>Selite[\\s\\S]*?<tr[\\s\\S]*?<td>.*?<td>.*?<td>.*?<td>.*?<td>(.*?)</td>".r
     val cidPattern = "([A-Z0-9]{4,} )".r
-    val url = "http://tilat.mikkeliamk.fi" + string.search(addressPattern).get
+    val url = string.search(addressPattern).get
 
-    val html = getHtml(url)
-    val name = html.search(namePattern).get
-    name.search(cidPattern)
-      .getOrElse(name)
-      .replaceAll(" ", "")
+    getScheduleHtml(url).map { html =>
+      val name = html.search(namePattern).get
+      name.search(cidPattern)
+        .getOrElse(name)
+        .replaceAll(" ", "")
+    }
   }
 
   private def getCourse(lesson: Lesson) = {
@@ -317,7 +338,7 @@ class ScheduleParserImpl @Inject()(
     )
 
     val resultFuture = for {
-      response <- scaladsl.Source.single(
+      response <- Source.single(
         HttpRequest(
           method = HttpMethods.POST,
           uri = SoleOpsPath,
