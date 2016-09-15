@@ -9,5 +9,5 @@ sudo openssl pkcs12 -export -out keystore.pkcs12 -in /etc/letsencrypt/live/sched
 sudo keytool -importkeystore -srckeystore keystore.pkcs12 -srcstoretype PKCS12 -destkeystore keystore.jks -srcstorepass letsencrypt -deststorepass letsencrypt
 sudo rm -rf keystore.pkcs12
 
-sudo /opt/play/script/stop.sh
-sudo /opt/play/script/start.sh
+# sudo /opt/play/script/stop.sh
+# sudo /opt/play/script/start.sh
