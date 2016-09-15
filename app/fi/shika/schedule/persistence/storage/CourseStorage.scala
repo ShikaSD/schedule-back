@@ -20,6 +20,8 @@ trait CourseStorage {
   def create(course: Course): Future[Course]
 
   def update(course: Course): Future[Int]
+
+  def deleteAll(items: Seq[Course]): Future[Int]
 }
 
 @Singleton
@@ -37,4 +39,6 @@ class CourseStorageImpl @Inject()(protected val configProvider: DatabaseConfigPr
   def create(course: Course) = db.run(courses returning courses += course)
 
   def update(course: Course) = db.run(courses.filter(_.id === course.id).update(course))
+
+  def deleteAll(items: Seq[Course]) = db.run(courses.filter(_.id.inSet(items.map(_.id.getOrElse(-1L)))).delete)
 }

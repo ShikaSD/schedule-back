@@ -22,6 +22,8 @@ trait RoomStorage {
   def createAll(items: Seq[Room]): Future[Seq[Room]]
 
   def delete(room: Room): Future[Int]
+
+  def deleteAll(items: Seq[Room]): Future[Int]
 }
 
 @Singleton
@@ -41,5 +43,7 @@ class RoomStorageImpl @Inject()(protected val configProvider: DatabaseConfigProv
   def createAll(items: Seq[Room]) = db.run(rooms returning rooms ++= items)
 
   def delete(room: Room) = db.run(rooms.filter(_.id === room.id).delete)
+
+  def deleteAll(items: Seq[Room]) = db.run(rooms.filter(_.id.inSet(items.map(_.id.getOrElse(-1L)))).delete)
 }
 

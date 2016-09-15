@@ -21,8 +21,6 @@ case class Course(
       this.name     == c.name     &&
       this.teachers  == c.teachers  &&
       this.group    == c.group    &&
-      this.start    == c.start    &&
-      this.end      == c.end      &&
       this.parent   == c.parent
 
     case _ => false

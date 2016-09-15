@@ -5,7 +5,8 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.Materializer
+import akka.stream.{Materializer, scaladsl}
+import akka.stream.scaladsl.Sink
 import com.google.inject.{ImplementedBy, Inject, Singleton}
 import fi.shika.schedule.persistence.model._
 import fi.shika.schedule.persistence.storage._
@@ -40,10 +41,11 @@ class ScheduleParserImpl @Inject()(
   implicit val materializer: Materializer
 ) extends ScheduleParser {
 
-  private val log = Logger(getClass)
+  private lazy val log = Logger(getClass)
 
-  private val tilatDateFormat   = DateTimeFormat.forPattern("yyMMddHH:mm")
-  private val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
+  private lazy val tilatDateFormat   = DateTimeFormat.forPattern("yyMMddHH:mm")
+  private lazy val soleOpsDateFormat = DateTimeFormat.forPattern("dd.MM.yyyy")
+  private def soleOpsFlow = Http().outgoingConnection(SoleOpsUrl)
 
   def parseGroups = {
     val namePattern = "<option value=\".*?\" >(.*?)<\\/option>".r
@@ -73,7 +75,7 @@ class ScheduleParserImpl @Inject()(
 
     val parsed = namePattern.findAllIn(html).matchData
       .map(_.group(1))
-      .toSeq.view
+      .toSeq
       .filter(!_.contains("Valitse"))
       .map { s =>
         val restored = s.replaceAll("\\&auml;", "ä").replaceAll("\\&ouml;", "ö")
@@ -90,17 +92,13 @@ class ScheduleParserImpl @Inject()(
       }
 
     roomStorage.all()
-        .map { rooms =>
-          parsed.filter(s => !rooms.exists(_ sameAs s))
-            .foreach(roomStorage.create)
+      .map { rooms =>
+        val toCreate = parsed.filter(s => !rooms.exists(_ sameAs s))
+        val toDelete = rooms.filter(s => !parsed.exists(_ sameAs s))
 
-          rooms
-        }.foreach(
-          _.filter(s => !parsed.exists(_ sameAs s))
-            .foreach(roomStorage.delete)
-        )
-
-    roomStorage.all()
+        roomStorage.createAll(toCreate)
+          .flatMap(s => roomStorage.deleteAll(toDelete))
+      }.flatMap(s => roomStorage.all())
   }
 
   def parseLessons(group: Group)(implicit startDate: DateTime) = {
@@ -127,13 +125,11 @@ class ScheduleParserImpl @Inject()(
         val deletedFuture = lessonStorage.deleteAll(lessonsToDelete)
           .map(f => deleted += lessonsToDelete.length)
 
-        for {
-          lessons  <- createdFuture
-          deleted  <- deletedFuture
-          teachers <- addTeachers(teachersToCreate)
-          rooms    <- addRooms(roomsToCreate)
-          course   <- Future sequence lessonsToCreate.map(addCourse)
-        } yield Unit
+        createdFuture
+          .flatMap(f => deletedFuture)
+          .flatMap(f => addTeachers(teachersToCreate))
+          .flatMap(f => addRooms(roomsToCreate))
+          .flatMap(f => Future sequence lessonsToCreate.map(addCourse))
       }
     } toList
 
@@ -143,36 +139,48 @@ class ScheduleParserImpl @Inject()(
 
 
   private def addCourse(lesson: Lesson) = {
-    courseStorage.byCourseId(lesson.courseId).map { courses =>
-      val newCourse = Course(
-        courseId = lesson.courseId,
-        name     = lesson.name,
-        teachers = lesson.teachers,
-        group    = lesson.group,
-        start    = lesson.start,
-        end      = lesson.end)
-
-      if (courses.isEmpty) {
+    courseStorage.byCourseId(lesson.courseId).flatMap { courses =>
+      val parentCourseFuture = if (courses.isEmpty) {
         //Create parent course
-        getCourse(lesson).map {
+        getCourse(lesson).flatMap {
           case Some(x) => courseStorage.create(x)
-          case _ => log.info(s"No courses found in soleops with id ${lesson.courseId} and group ${lesson.group}")
+          case _ => Future.successful {
+            log.info(s"No courses found in soleops with id ${lesson.courseId} and group ${lesson.group}")
+          }
+        }
+      } else {
+        Future.successful {
+          log.info(s"${courses.size} found in database for id ${lesson.courseId}")
         }
       }
+
+      parentCourseFuture.map(s => courses)
+    }.flatMap { courses =>
+
+      val newCourse = Course(
+        courseId = lesson.courseId,
+        name = lesson.name,
+        teachers = lesson.teachers,
+        group = lesson.group,
+        start = lesson.start,
+        end = lesson.end)
 
       if (!courses.exists(_ sameAs newCourse)) {
         courseStorage.create(newCourse)
       } else {
-        courses.filter(_ sameAs newCourse)
-          .map { c =>
-            val start = if (c.start isAfter newCourse.start) newCourse.start else c.start
-            val end = if (c.end isBefore newCourse.end) newCourse.end else c.end
+        val sameCourse = courses.filter(_ sameAs newCourse).head
 
-            courseStorage.update(c.copy(start = start, end = end))
+        val start = if (sameCourse.start isAfter newCourse.start) newCourse.start else sameCourse.start
+        val end =   if (sameCourse.end isBefore newCourse.end)    newCourse.end   else sameCourse.end
+
+        courseStorage.update(sameCourse.copy(start = start, end = end))
+          .flatMap { s =>
+            courseStorage.deleteAll(courses.filter(_ sameAs newCourse).tail)
           }
       }
     }
   }
+
 
   private def addTeachers(teacherNames: Seq[String]) = {
     teacherStorage.byNames(teacherNames).flatMap { teachers =>
@@ -309,12 +317,14 @@ class ScheduleParserImpl @Inject()(
     )
 
     val resultFuture = for {
-      response <- Http().singleRequest(
+      response <- scaladsl.Source.single(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = SoleOpsUrl,
+          uri = SoleOpsPath,
           entity = data.toEntity,
-          headers = headers))
+          headers = headers)
+      ) .via(soleOpsFlow)
+        .runWith(Sink.head)
       result <- Unmarshal(response).to[String]
     } yield result
 

@@ -20,7 +20,10 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
   private lazy val log = Logger(getClass.getName)
 
   private def parse(start: DateTime) = {
-    implicit val startDate = start.withDayOfWeek(DateTimeConstants.MONDAY)
+    implicit val startDate = start
+      .withMinuteOfHour(0)
+      .withHourOfDay(1)
+      .withDayOfWeek(DateTimeConstants.MONDAY)
 
     log.info(s"Parser started at $startDate")
 
@@ -58,7 +61,9 @@ class ParserActor @Inject()(private val scheduleParser: ScheduleParser)(implicit
       r <- rooms
     } yield (s, r)
 
-    parsing.onComplete(s => log.info("End of parsing"))
+    parsing.onComplete { s =>
+      log.info("End of parsing")
+    }
   }
 
   override def receive = {
