@@ -3,6 +3,7 @@ package fi.shika.schedule.actors
 import akka.actor.Actor
 import akka.pattern.after
 import com.google.inject.Inject
+import fi.shika.schedule._
 import fi.shika.schedule.actors.ParserActor.Parse
 import fi.shika.schedule.parser.ScheduleParser
 import org.joda.time.{DateTime, DateTimeConstants}
@@ -22,7 +23,7 @@ class ParserActor @Inject()(
 )(implicit ec: ExecutionContext) extends Actor {
 
   private lazy val log = Logger(getClass.getName)
-  private val DebounceValue = 20.seconds
+  private val DebounceValue = 1.minute
 
   private def parse(start: DateTime) = {
     implicit val startDate = start
@@ -48,9 +49,7 @@ class ParserActor @Inject()(
                 log.error(s"Failed to parse lessons for group $g with exception: ", e)
             }
           }
-        } reduce[Future[(Int, Int)]] { case (memo, it) =>
-            memo.flatMap(s => it)
-        }
+        } reduce[Future[(Int, Int)]] { case (memo, it) => memo.runNext(it) }
       }
     }
 

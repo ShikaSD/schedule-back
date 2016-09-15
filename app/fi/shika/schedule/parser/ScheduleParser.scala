@@ -8,6 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.google.inject.{ImplementedBy, Inject, Singleton}
+import fi.shika.schedule._
 import fi.shika.schedule.persistence.model._
 import fi.shika.schedule.persistence.storage._
 import org.joda.time.DateTime
@@ -123,6 +124,11 @@ class ScheduleParserImpl @Inject()(
           val lessonsToCreate = parsed.filter(l => !lessons.exists(_ sameAs l))
           val lessonsToDelete = lessons.filter(l => !parsed.exists(_ sameAs l))
 
+          val equalCounter = lessonsToCreate.count(l => lessonsToDelete.exists(_ sameAs l))
+          if(equalCounter > 0) {
+            log.info(s"Created and deleted $equalCounter same objects")
+          }
+
           val teachersToCreate = lessonsToCreate.flatMap(_.teachers).distinct
           val roomsToCreate = lessonsToCreate.flatMap(_.rooms).distinct
 
@@ -140,7 +146,7 @@ class ScheduleParserImpl @Inject()(
         }
     } toList
 
-    parsedFutures.reduce[Future[Any]] { case (memo, future) => memo.flatMap(s => future) }
+    parsedFutures.reduce[Future[Any]] { case (memo, future) => memo.runNext(future) }
       .map(result => (created, deleted))
   }
 
