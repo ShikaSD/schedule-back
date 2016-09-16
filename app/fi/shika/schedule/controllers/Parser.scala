@@ -15,7 +15,7 @@ class Parser @Inject() (
   actorSystem: ActorSystem
 )(implicit val ec: ExecutionContext) extends Controller {
 
-  private lazy val parserFrequency = 4.hours
+  private lazy val parserFrequency = 6.hours
 
   def parseSchedule = Action { implicit request =>
     actorSystem.scheduler.schedule(
