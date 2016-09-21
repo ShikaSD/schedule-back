@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 
 object ParserActor {
 
-  case class Parse(date: DateTime = DateTime.now)
+  case class Parse(date: DateTime = DateTime.now, weekAmount: Int = DefaultWeekToParse)
 }
 
 class ParserActor @Inject()(
@@ -25,7 +25,7 @@ class ParserActor @Inject()(
   private lazy val log = Logger(getClass.getName)
   private val DebounceValue = 1.minute
 
-  private def parse(start: DateTime) = {
+  private def parse(start: DateTime, weekAmount: Int) = {
     implicit val startDate = start
       .withMinuteOfHour(0)
       .withHourOfDay(1)
@@ -42,7 +42,7 @@ class ParserActor @Inject()(
         groups.zipWithIndex.map { case (g, i) =>
           log.info(s"Delaying parser start of group ${g.name} to ${DebounceValue * i}")
           after(DebounceValue * i, context.system.scheduler) {
-            scheduleParser.parseLessons(g).andThen {
+            scheduleParser.parseLessons(g, weekAmount).andThen {
               case Success((added, deleted)) =>
                 log.info(s"Parsed lessons for group $g added: $added, deleted $deleted")
               case Failure(e) =>
@@ -71,6 +71,6 @@ class ParserActor @Inject()(
   }
 
   override def receive = {
-    case Parse(x: DateTime) => parse(x)
+    case Parse(x: DateTime, weekAmount: Int) => parse(x, weekAmount)
   }
 }

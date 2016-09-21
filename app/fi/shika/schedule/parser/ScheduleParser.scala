@@ -5,6 +5,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.pattern.after
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.google.inject.{ImplementedBy, Inject, Singleton}
@@ -26,7 +27,7 @@ trait ScheduleParser {
 
   def parseRooms: Future[Seq[Room]]
 
-  def parseLessons(group: Group)(implicit startDate: DateTime): Future[(Int, Int)]
+  def parseLessons(group: Group, weekAmount: Int)(implicit startDate: DateTime): Future[(Int, Int)]
 }
 
 @Singleton
@@ -42,7 +43,7 @@ class ScheduleParserImpl @Inject()(
   implicit val materializer: Materializer
 ) extends ScheduleParser {
 
-  private val TimeOut = 1.minute
+  private val HttpDelay = 100.milliseconds
 
   private lazy val log = Logger(getClass)
 
@@ -107,16 +108,16 @@ class ScheduleParserImpl @Inject()(
     }
   }
 
-  def parseLessons(group: Group)(implicit startDate: DateTime) = {
+  def parseLessons(group: Group, weekAmount: Int)(implicit startDate: DateTime) = {
     var deleted = 0
     var created = 0
 
-    val parsedFutures = formUrls(group.name, startDate) map { case (weekNum, url) =>
+    val parsedFutures = formUrls(group.name, startDate, weekAmount).zipWithIndex.map { case ((weekNum, url), index) =>
       lessonStorage.groupLessonsBetween(
         group.name,
         startDate plusWeeks weekNum - 1,
         startDate plusWeeks weekNum
-      ) .zip(parseWeek(url, group))
+    )   .zip(after(HttpDelay, system.scheduler)(parseWeek(url, group)))
         .flatMap { case (lessons, parsed) =>
 
           log.info(s"Parsed lessons for group ${group.name} and startDate ${startDate plusWeeks weekNum - 1}")
@@ -300,8 +301,8 @@ class ScheduleParserImpl @Inject()(
   }
 
 
-  private def formUrls(name: String, start: DateTime): Array[(Int, String)] = {
-    (0 to WeeksToParse) map { num =>
+  private def formUrls(name: String, start: DateTime, weekAmount: Int): Array[(Int, String)] = {
+    (0 to weekAmount) map { num =>
       (num + 1, start.plusWeeks(num))
     } map { tuple =>
       val dString = tuple._2.toString(DateTimeFormat.forPattern("yyMMdd"))

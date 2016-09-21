@@ -9,7 +9,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc._
 
-class App @Inject() (
+class IndexController @Inject() (
   checker: DatabaseChecker,
   groupStorage: GroupStorage,
   env: Environment

@@ -16,4 +16,8 @@ package object schedule {
       .recoverWith { case e: Exception => Future.successful(log.error("Future failed with", e)) }
       .flatMap(u => f)
   }
+
+  //Amount of parsing
+  val DefaultWeekToParse = 24
+  val ShortWeekToParse   = 2
 }

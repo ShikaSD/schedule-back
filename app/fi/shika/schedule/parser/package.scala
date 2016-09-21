@@ -39,10 +39,6 @@ package object parser {
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=Savonlinna%2Fmuut_tilat%7C%7CSln&guest=%2Fmamk&lang=eng",
     "http://tilat.mikkeliamk.fi/kalenterit2/index.php?kt=tila%2C9410&laji=STK%2FElixiiri%7C%7CSTK&guest=%2Fmamk&lang=eng")
 
-  //Amount of parsing
-  val WeeksToParse = 24
-  val MonthsToParse = 6
-
   //Define default codec for requests
   implicit val codec = Codec("ISO-8859-1")
   codec.onMalformedInput(CodingErrorAction.REPLACE)
