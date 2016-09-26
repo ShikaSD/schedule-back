@@ -5,5 +5,8 @@
 GET     /                           @fi.shika.schedule.controllers.IndexController.index()
 GET     /parser/start/              @fi.shika.schedule.controllers.ParserController.parseSchedule()
 
+# Groups controller
+GET     /groups/                    @fi.shika.schedule.controllers.GroupController.all()
+
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               @controllers.Assets.at(path="/public", file)

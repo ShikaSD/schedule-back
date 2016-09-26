@@ -20,6 +20,12 @@ trait GroupStorage {
   def all(): Future[Seq[Group]]
 
   /**
+    * Counts amount of groups in database
+    * @return Future with retrieved Int value
+    */
+  def count(): Future[Int]
+
+  /**
     * Creates all items in the database
     * @param items to create
     * @return Future with created items
@@ -43,6 +49,8 @@ class GroupStorageImpl @Inject()(protected val configProvider: DatabaseConfigPro
   import driver.api._
 
   def all() = db.run(groups.sortBy(_.name).result)
+
+  def count() = db.run(groups.length.result)
 
   def createAll(items: Seq[Group]) = db.run(groups returning groups ++= items)
 
