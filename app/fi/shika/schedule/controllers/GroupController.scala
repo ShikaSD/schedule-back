@@ -8,6 +8,8 @@ import play.Environment
 import play.api.libs.json.Json
 import play.api.mvc.Action
 
+import scala.concurrent.ExecutionContext
+
 /**
   * Controller for operating group list
   */
@@ -15,7 +17,7 @@ class GroupController @Inject() (
   checker: DatabaseChecker,
   groupStorage: GroupStorage,
   env: Environment
-) extends BaseController(env) {
+)(implicit val ec: ExecutionContext) extends BaseController(env) {
 
   def all = withId(Action.async {
     groupStorage.all().map { groups =>
