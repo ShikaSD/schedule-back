@@ -63,6 +63,8 @@ class ScheduleParserImpl @Inject()(
 
       groupStorage.all()
         .flatMap { groups =>
+          log.info(groups.toString())
+
           val toCreate = parsedNames.filter(s => !groups.exists(_.name == s))
             .map(s => Group(name = s))
 
@@ -353,7 +355,7 @@ class ScheduleParserImpl @Inject()(
           headers = headers)
       ) .via(soleOpsFlow)
         .runWith(Sink.head)
-      result <- Unmarshal(response).to[String]
+      result <- Unmarshal(response).to[String].map(s => new String(s.getBytes("ISO-8859-1"), "UTF-8"))
     } yield result
 
     resultFuture.map { body =>

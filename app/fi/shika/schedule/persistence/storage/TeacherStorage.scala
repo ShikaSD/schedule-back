@@ -28,7 +28,7 @@ class TeacherStorageImpl @Inject()(protected val configProvider: DatabaseConfigP
 
   import driver.api._
 
-  def all(): Future[Seq[Teacher]] = db.run(teachers.result)
+  def all(): Future[Seq[Teacher]] = db.run(teachers.sortBy(_.name).result)
 
   def byNames(names: Seq[String]) = db.run(teachers.filter(_.name.inSet(names)).result)
 
