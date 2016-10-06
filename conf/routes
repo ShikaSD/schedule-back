@@ -3,13 +3,17 @@
 # ~~~~
 
 GET     /                           @fi.shika.schedule.controllers.IndexController.index()
-GET     /parser/start/              @fi.shika.schedule.controllers.ParserController.parseSchedule()
+GET     /parser/setup/              @fi.shika.schedule.controllers.ParserController.setupParser()
+GET     /parser/start/              @fi.shika.schedule.controllers.ParserController.parseSchedule(timestamp: Option[Long])
 
 # Groups controller
 GET     /groups/                    @fi.shika.schedule.controllers.GroupController.all()
 
 # Teachers controller
-GET     /teachers/                    @fi.shika.schedule.controllers.TeacherController.all()
+GET     /teachers/                  @fi.shika.schedule.controllers.TeacherController.all()
+
+# Rooms controller
+GET     /rooms/                     @fi.shika.schedule.controllers.RoomController.all()
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               @controllers.Assets.at(path="/public", file)

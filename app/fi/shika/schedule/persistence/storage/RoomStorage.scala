@@ -34,7 +34,7 @@ class RoomStorageImpl @Inject()(protected val configProvider: DatabaseConfigProv
 
   import driver.api._
 
-  def all() = db.run(rooms.result)
+  def all() = db.run(rooms.sortBy(_.name).result)
 
   def byNames(names: Seq[String]) = db.run(rooms.filter(_.name.inSet(names)).result)
 

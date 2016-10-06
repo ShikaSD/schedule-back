@@ -7,6 +7,7 @@ import com.google.inject.name.Named
 import fi.shika.schedule._
 import fi.shika.schedule.actors.ParserActor.Parse
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.mvc.{Action, Controller}
 
 import scala.concurrent.ExecutionContext
@@ -17,12 +18,14 @@ class ParserController @Inject() (
   actorSystem: ActorSystem
 )(implicit val ec: ExecutionContext) extends Controller {
 
+  private lazy val log = Logger(getClass)
+
   private lazy val largeParserFrequency = 24.hours
   private lazy val smallParserFrequency = 4.hours
   private var largeParser: Option[Cancellable] = None
   private var smallParser: Option[Cancellable] = None
 
-  def parseSchedule = Action { implicit request =>
+  def setupParser() = Action { implicit request =>
     val timeToMidnight = DateTime.now.withTimeAtStartOfDay.plusDays(1).getMillis - DateTime.now.getMillis
 
     largeParser.foreach(_.cancel())
@@ -44,5 +47,11 @@ class ParserController @Inject() (
       s"Parser will start at midnight and will be running every $largeParserFrequency\n" +
       s"Small parser will be running every $smallParserFrequency after midnight"
     )
+  }
+
+  def parseSchedule(timestamp: Option[Long]) = Action {
+    parser ! Parse(timestamp.map(new DateTime(_)).getOrElse(DateTime.now), ShortWeekToParse)
+
+    Ok("Parser started right now")
   }
 }
