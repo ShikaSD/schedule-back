@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.http.scaladsl.unmarshalling._
 import akka.pattern.after
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
@@ -58,13 +58,13 @@ class ScheduleParserImpl @Inject()(
 
       val parsedNames = namePattern.findAllIn(html).matchData
         .map(_.group(1))
-        .toSeq
+        .toList
         .drop(1)
+
+      log.info(parsedNames.toString())
 
       groupStorage.all()
         .flatMap { groups =>
-          log.info(groups.toString())
-
           val toCreate = parsedNames.filter(s => !groups.exists(_.name == s))
             .map(s => Group(name = s))
 
@@ -83,7 +83,7 @@ class ScheduleParserImpl @Inject()(
     } flatMap { html =>
       val parsed = namePattern.findAllIn(html).matchData
         .map(_.group(1))
-        .toSeq
+        .toList
         .filter(!_.contains("Valitse"))
         .map { s =>
           val restored = s.replaceAll("\\&auml;", "ä").replaceAll("\\&ouml;", "ö")
@@ -229,7 +229,7 @@ class ScheduleParserImpl @Inject()(
     getScheduleHtml(url).flatMap { html =>
       Future sequence lessonPattern.findAllIn(html).matchData
         .map(_.group(1))
-        .toSeq
+        .toList
         .map { part: String =>
           val splitParts = part.search(infoPattern).get
             .split("<br/>")
@@ -286,6 +286,7 @@ class ScheduleParserImpl @Inject()(
   }
 
   private def getScheduleHtml(url: String) = {
+
     val urlParts = url.split("\\?")
     val uri = urlParts.head
     val query = urlParts.tail.headOption.getOrElse("")
@@ -298,7 +299,9 @@ class ScheduleParserImpl @Inject()(
       response <- Source.single(HttpRequest(uri = Uri(uri).withRawQueryString(query), headers = headers))
         .via(Http().outgoingConnection(ScheduleUrl))
         .runWith(Sink.head)
-      result   <- Unmarshal(response).to[String]
+      result <- Unmarshal(
+          response.entity.withContentType(MediaTypes.`text/html` withCharset HttpCharsets.`ISO-8859-1`)
+        ).to[String]
     } yield result
   }
 
@@ -355,7 +358,9 @@ class ScheduleParserImpl @Inject()(
           headers = headers)
       ) .via(soleOpsFlow)
         .runWith(Sink.head)
-      result <- Unmarshal(response).to[String].map(s => new String(s.getBytes("ISO-8859-1"), "UTF-8"))
+      result <- Unmarshal(
+        response.entity.withContentType(MediaTypes.`text/html` withCharset HttpCharsets.`ISO-8859-1`)
+      ).to[String]
     } yield result
 
     resultFuture.map { body =>

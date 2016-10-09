@@ -2,6 +2,7 @@ package fi.shika.schedule.controllers
 
 import javax.inject.Inject
 
+import fi.shika.schedule.persistence.model.Teacher
 import fi.shika.schedule.persistence.storage.TeacherStorage
 import fi.shika.schedule.startup.DatabaseChecker
 import play.Environment
@@ -21,7 +22,11 @@ class TeacherController @Inject() (
 
   def all = withId(Action.async {
     teacherStorage.all().map { teachers =>
-      Ok(Json.toJson(teachers))
+      val uniqueTeachers = teachers.foldLeft(Nil: List[Teacher]) { case (acc, next) =>
+          if(acc exists(next.name == _.name)) acc else next :: acc
+      } reverse
+
+      Ok(Json.toJson(uniqueTeachers))
     }
   })
 }
