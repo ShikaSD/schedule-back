@@ -10,5 +10,7 @@ scalacOptions ++= Seq(
   "-unchecked")
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayScala)
   .settings(libraryDependencies ++= Dependencies.common)
+
+mainClass in(Compile, run) := Some("fi.shika.schedule.Main")
+run in Compile <<= (run in Compile in root)

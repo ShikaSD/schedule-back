@@ -14,5 +14,5 @@ dist
 /RUNNING_PID
 /.settings
 hk-debug
-application.conf
-prod.conf
+src/main/resources/application.conf
+src/main/resources/prod.conf
