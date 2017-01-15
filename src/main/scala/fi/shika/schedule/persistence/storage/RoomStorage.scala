@@ -1,32 +1,10 @@
 package fi.shika.schedule.persistence.storage
 
-import com.google.inject.{ImplementedBy, Singleton}
 import fi.shika.schedule.persistence.TableComponent
 import fi.shika.schedule.persistence.model.Room
 import fi.shika.schedule.persistence.profile.SlickProfile
 
-import scala.concurrent.Future
-
-@ImplementedBy(classOf[RoomStorageImpl])
-trait RoomStorage {
-
-  def all(): Future[Seq[Room]]
-
-  def byNames(names: Seq[String]): Future[Seq[Room]]
-
-  def create(room: Room): Future[Room]
-
-  def createAll(items: Seq[Room]): Future[Seq[Room]]
-
-  def delete(room: Room): Future[Int]
-
-  def deleteAll(items: Seq[Room]): Future[Int]
-}
-
-@Singleton
-class RoomStorageImpl extends RoomStorage
-  with TableComponent
-  with SlickProfile {
+class RoomStorage extends TableComponent with SlickProfile {
 
   import driver.api._
 

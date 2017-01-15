@@ -1,26 +1,12 @@
 package fi.shika.schedule.persistence.storage
 
-import com.google.inject.{ImplementedBy, Singleton}
 import fi.shika.schedule.persistence.TableComponent
 import fi.shika.schedule.persistence.model.Teacher
 import fi.shika.schedule.persistence.profile.SlickProfile
 
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[TeacherStorageImpl])
-trait TeacherStorage {
-
-  def all(): Future[Seq[Teacher]]
-
-  def byNames(names: Seq[String]): Future[Seq[Teacher]]
-
-  def createAll(items: Seq[Teacher]): Future[Seq[Teacher]]
-}
-
-@Singleton
-class TeacherStorageImpl extends TeacherStorage
-  with TableComponent
-  with SlickProfile {
+class TeacherStorage extends TableComponent with SlickProfile {
 
   import driver.api._
 
