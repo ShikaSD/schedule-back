@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.Logger
 import fi.shika.schedule.persistence.model.Group
-import fi.shika.schedule.persistence.storage.GroupStorageImpl
+import fi.shika.schedule.persistence.storage.GroupStorage
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -15,7 +15,7 @@ trait MainController extends BaseController {
 
   protected def logger: Logger
 
-  protected lazy val groupStorage = new GroupStorageImpl()
+  protected lazy val groupStorage = new GroupStorage()
 
   protected lazy val mainRoute = get {
     pathPrefix("group") {
